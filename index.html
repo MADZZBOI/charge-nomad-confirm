@@ -20,18 +20,24 @@
     background: #121815;
     border: 1px solid #3DDC8440;
     border-radius: 20px;
-    padding: 40px 32px;
+    padding: 36px 32px 32px;
     max-width: 400px;
     width: 100%;
     text-align: center;
   }
   .logo {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-    margin-bottom: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    margin-bottom: 18px;
   }
-  .icon { font-size: 48px; margin-bottom: 16px; }
+  .divider {
+    width: 32px;
+    height: 1px;
+    background: #ffffff20;
+    margin: 0 auto 28px;
+  }
+  .icon { font-size: 44px; margin-bottom: 16px; }
   h1 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
   p { font-size: 15px; color: #9BA69F; line-height: 1.5; }
   .footer { margin-top: 24px; font-size: 12px; color: #5F6B62; }
@@ -40,6 +46,7 @@
 <body>
   <div class="card" id="card">
     <img src="ChatGPT_Image_Jul_7_2026_01_14_15_PM.png" alt="Volts Up" class="logo" />
+    <div class="divider"></div>
     <div class="icon" id="icon">⏳</div>
     <h1 id="title">Loading…</h1>
     <p id="message"></p>
