@@ -26,18 +26,29 @@
     text-align: center;
   }
   .logo {
-    width: 40px;
-    height: 40px;
-    border-radius: 11px;
-    margin-bottom: 18px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    margin-bottom: 16px;
   }
   .divider {
     width: 32px;
     height: 1px;
     background: #ffffff20;
-    margin: 0 auto 28px;
+    margin: 0 auto 24px;
   }
-  .icon { font-size: 44px; margin-bottom: 16px; }
+  .status-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 26px;
+    font-weight: 700;
+    color: #0A0F0C;
+  }
   h1 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
   p { font-size: 15px; color: #9BA69F; line-height: 1.5; }
   .footer { margin-top: 24px; font-size: 12px; color: #5F6B62; }
@@ -47,7 +58,7 @@
   <div class="card" id="card">
     <img src="ChatGPT_Image_Jul_7_2026_01_14_15_PM.png" alt="Volts Up" class="logo" />
     <div class="divider"></div>
-    <div class="icon" id="icon">⏳</div>
+    <div class="status-circle" id="statusCircle">…</div>
     <h1 id="title">Loading…</h1>
     <p id="message"></p>
     <div class="footer">Volts Up — you can close this tab</div>
@@ -59,32 +70,33 @@
     const name = params.get("name");
     const message = params.get("message");
 
-    const iconEl = document.getElementById("icon");
+    const circleEl = document.getElementById("statusCircle");
     const titleEl = document.getElementById("title");
     const messageEl = document.getElementById("message");
     const cardEl = document.getElementById("card");
 
-    let icon = "✅", title = "Done", text = "", accent = "#3DDC84";
+    let symbol = "✓", title = "Done", text = "", accent = "#3DDC84";
 
     if (status === "approved") {
-      icon = "✅"; title = "Charger Approved";
+      symbol = "✓"; title = "Charger Approved";
       text = name ? `"${name}" is now live on the map for everyone.` : "The charger is now live on the map.";
       accent = "#3DDC84";
     } else if (status === "rejected") {
-      icon = "❌"; title = "Charger Rejected";
+      symbol = "✕"; title = "Charger Rejected";
       text = name ? `"${name}" has been rejected and will stay hidden.` : "The charger has been rejected.";
       accent = "#E8544B";
     } else if (status === "unauthorized") {
-      icon = "🔒"; title = "Not Authorized";
+      symbol = "!"; title = "Not Authorized";
       text = "This link isn't valid.";
       accent = "#E8544B";
     } else {
-      icon = "⚠️"; title = "Something Went Wrong";
+      symbol = "!"; title = "Something Went Wrong";
       text = message || "An unexpected error occurred.";
       accent = "#E8544B";
     }
 
-    iconEl.textContent = icon;
+    circleEl.textContent = symbol;
+    circleEl.style.background = accent;
     titleEl.textContent = title;
     titleEl.style.color = accent;
     messageEl.textContent = text;
