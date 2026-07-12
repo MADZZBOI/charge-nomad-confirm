@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Charge Nomad Admin</title>
+<style>
+  :root {
+    --bg: #0A0F0C; --surface: #10160F12; --card: #121815; --elevated: #1A211D;
+    --border: #222B25; --border2: #2C372F;
+    --text: #F2F6F3; --text2: #A7B3AB; --text3: #66736A;
+    --accent: #3DDC84; --accent-dim: rgba(61,220,132,.12);
+    --warn: #E8B84B; --warn-dim: rgba(232,184,75,.12);
+    --danger: #F0655D; --danger-dim: rgba(232,84,75,.12);
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background:
+      radial-gradient(1200px 500px at 50% -200px, rgba(61,220,132,.07), transparent 70%),
+      var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, "SF Pro Text", "Segoe UI", Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  button { font: inherit; cursor: pointer; border: none; border-radius: 10px; transition: filter .15s, background .15s, transform .05s; }
+  button:active { transform: scale(.97); }
+
+  /* ── Header ─────────────────────────────────────────── */
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px clamp(16px, 4vw, 28px);
+    background: rgba(10,15,12,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 5;
+  }
+  header img { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+  header h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  header h1 span { color: var(--accent); }
+  header .spacer { flex: 1; }
+  #refreshBtn, #logout { background: var(--elevated); color: var(--text2); padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); }
+  #refreshBtn:hover, #logout:hover { color: var(--text); border-color: var(--border2); }
+
+  /* ── Nav ────────────────────────────────────────────── */
+  nav {
+    display: flex; gap: 8px; padding: 16px clamp(16px, 4vw, 28px) 0;
+    max-width: 1040px; margin: 0 auto; flex-wrap: wrap;
+  }
+  nav button {
+    background: transparent; color: var(--text3); padding: 9px 18px;
+    font-weight: 600; font-size: 14px; border: 1px solid transparent; border-radius: 99px;
+  }
+  nav button:hover { color: var(--text2); background: var(--elevated); }
+  nav button.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(61,220,132,.25); }
+  nav button .badge {
+    background: var(--danger); color: #fff; border-radius: 99px;
+    padding: 1px 7px; font-size: 11px; font-weight: 700; margin-left: 6px; vertical-align: 1px;
+  }
+
+  main { padding: 20px clamp(16px, 4vw, 28px) 80px; max-width: 1040px; margin: 0 auto; }
+
+  /* ── Stats ──────────────────────────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat {
+    background: linear-gradient(160deg, var(--elevated), var(--card));
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px;
+  }
+  .stat .n { font-size: 28px; font-weight: 800; letter-spacing: -.02em; color: var(--accent); }
+  .stat .l { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+  /* ── Cards ──────────────────────────────────────────── */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; margin-bottom: 12px; transition: border-color .15s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card h3 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card .meta { font-size: 12px; color: var(--text3); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+  .card .body { color: var(--text2); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  .kvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; margin-top: 10px; }
+  .kv { font-size: 13px; color: var(--text2); overflow-wrap: anywhere; }
+  .kv b { color: var(--text3); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; display: block; }
+
+  .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .approve { background: var(--accent); color: #06130B; padding: 9px 18px; font-weight: 700; font-size: 13px; }
+  .approve:hover { filter: brightness(1.1); }
+  .reject, .delete { background: var(--danger-dim); color: var(--danger); padding: 9px 18px; font-weight: 700; font-size: 13px; border: 1px solid rgba(232,84,75,.2); }
+  .reject:hover, .delete:hover { background: rgba(232,84,75,.22); }
+  .neutral { background: var(--elevated); color: var(--text2); padding: 9px 16px; font-weight: 600; font-size: 13px; border: 1px solid var(--border); }
+  .neutral:hover { color: var(--text); border-color: var(--border2); }
+  a.neutral { text-decoration: none; border-radius: 10px; }
+
+  .pill { display: inline-block; border-radius: 99px; padding: 2px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+  .pill.open, .pill.pending { background: var(--warn-dim); color: var(--warn); }
+  .pill.in_progress, .pill.approved { background: var(--accent-dim); color: var(--accent); }
+  .pill.closed { background: var(--elevated); color: var(--text3); }
+  .pill.rejected { background: var(--danger-dim); color: var(--danger); }
+
+  input[type=text], input[type=password], textarea {
+    background: var(--elevated); border: 1px solid var(--border); color: var(--text);
+    border-radius: 10px; padding: 10px 14px; font: inherit; width: 100%;
+    transition: border-color .15s;
+  }
+  input:focus, textarea:focus { outline: none; border-color: rgba(61,220,132,.45); }
+  input::placeholder { color: var(--text3); }
+
+  .searchrow { display: flex; gap: 10px; margin-bottom: 20px; }
+  .searchrow input { flex: 1; }
+  .searchrow button { background: var(--accent); color: #06130B; padding: 0 22px; font-weight: 700; }
+  .searchrow button:hover { filter: brightness(1.1); }
+
+  .empty { color: var(--text3); text-align: center; padding: 48px 0; font-size: 14px; }
+  .empty.err { color: var(--danger); }
+  h2.section {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700;
+    color: var(--text3); margin: 28px 0 12px; display: flex; align-items: center; gap: 10px;
+  }
+  h2.section::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  /* ── Table ──────────────────────────────────────────── */
+  .tablewrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); }
+  th, td { text-align: left; padding: 11px 16px; font-size: 13px; white-space: nowrap; }
+  th { color: var(--text3); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; background: var(--elevated); position: sticky; top: 0; }
+  td { color: var(--text2); border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  tr:hover td { background: rgba(255,255,255,.015); }
+  td.ok { color: var(--accent); }
+
+  /* ── Login ──────────────────────────────────────────── */
+  #login {
+    position: fixed; inset: 0; z-index: 10;
+    background:
+      radial-gradient(900px 500px at 50% 20%, rgba(61,220,132,.08), transparent 70%),
+      var(--bg);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  #login .box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 24px;
+    padding: 40px 36px; width: 360px; max-width: 100%; text-align: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  }
+  #login img { width: 64px; height: 64px; border-radius: 16px; margin-bottom: 18px; box-shadow: 0 6px 24px rgba(61,220,132,.15); }
+  #login h2 { font-size: 20px; font-weight: 800; letter-spacing: -.02em; margin-bottom: 6px; }
+  #login p { color: var(--text3); font-size: 13px; margin-bottom: 22px; }
+  #login input { margin-bottom: 12px; text-align: center; }
+  #login button { width: 100%; background: var(--accent); color: #06130B; padding: 12px; font-weight: 700; font-size: 15px; }
+  #login button:hover { filter: brightness(1.1); }
+  #loginErr { color: var(--danger); font-size: 13px; margin-top: 12px; min-height: 18px; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(8px);
+    background: var(--elevated); color: var(--text); padding: 11px 22px; border-radius: 12px;
+    font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s, transform .25s;
+    pointer-events: none; z-index: 20; border: 1px solid var(--border2);
+    box-shadow: 0 10px 30px rgba(0,0,0,.5); white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="box">
+    <img src="https://madzzboi.github.io/charge-nomad-confirm/logo.png" alt="Charge Nomad">
+    <h2>Charge Nomad Admin</h2>
+    <p>Enter your moderation secret to continue.</p>
+    <input type="password" id="secretInput" placeholder="••••••••" autocomplete="current-password">
+    <button onclick="tryLogin()">Unlock</button>
+    <div id="loginErr"></div>
+  </div>
+</div>
+
+<header>
+  <img src="https://madzzboi.github.io/charge-nomad-confirm/logo.png" alt="">
+  <h1>Charge Nomad <span>Admin</span></h1>
+  <div class="spacer"></div>
+  <button id="refreshBtn" onclick="refreshAll(); toast('Refreshed')">Refresh</button>
+  <button id="logout" onclick="logout()">Lock</button>
+</header>
+
+<nav>
+  <button data-tab="moderation" class="active" onclick="showTab('moderation')">Moderation <span class="badge" id="modBadge" style="display:none"></span></button>
+  <button data-tab="tickets" onclick="showTab('tickets')">Tickets <span class="badge" id="ticketBadge" style="display:none"></span></button>
+  <button data-tab="signups" onclick="showTab('signups')">Signups</button>
+  <button data-tab="content" onclick="showTab('content')">Content</button>
+</nav>
+
+<main>
+  <div id="tab-moderation"></div>
+  <div id="tab-tickets" style="display:none"></div>
+  <div id="tab-signups" style="display:none"></div>
+  <div id="tab-content" style="display:none">
+    <div class="searchrow">
+      <input type="text" id="contentQ" placeholder="Search notes and chargers…" onkeydown="if(event.key==='Enter')loadContent()">
+      <button onclick="loadContent()">Search</button>
+    </div>
+    <div id="contentResults"></div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+const API = "https://rgkhknmscrenydxlrglf.supabase.co/functions/v1/admin-api";
+const ANON = "sb_publishable_hxs2u-HAQ8WrXEi6LJDyMQ_VoIPGPHs";
+let SECRET = sessionStorage.getItem("cn_admin_secret") || "";
+
+async function api(action, extra = {}) {
+  const res = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": ANON, "Authorization": "Bearer " + ANON },
+    body: JSON.stringify({ secret: SECRET, action, ...extra }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { logout(); throw new Error("Unauthorized"); }
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function fmtDate(s) {
+  if (!s) return "";
+  const d = new Date(s);
+  return isNaN(d) ? esc(s) : d.toLocaleString("en-AU", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+// Renders any row's remaining columns as key/value tiles, so unknown
+// table schemas still display everything.
+function kvBlock(row, skip) {
+  const items = Object.entries(row)
+    .filter(([k, v]) => !skip.includes(k) && v !== null && v !== "")
+    .map(([k, v]) => `<div class="kv"><b>${esc(k.replace(/_/g, " "))}</b>${esc(typeof v === "object" ? JSON.stringify(v) : v)}</div>`)
+    .join("");
+  return items ? `<div class="kvgrid">${items}</div>` : "";
+}
+
+// ── Login ─────────────────────────────────────────────────────────────
+async function tryLogin() {
+  SECRET = document.getElementById("secretInput").value.trim();
+  document.getElementById("loginErr").textContent = "";
+  try {
+    await api("tickets");
+    sessionStorage.setItem("cn_admin_secret", SECRET);
+    document.getElementById("login").style.display = "none";
+    refreshAll();
+  } catch {
+    document.getElementById("loginErr").textContent = "Wrong secret, or the admin-api function isn't reachable.";
+  }
+}
+function logout() {
+  SECRET = "";
+  sessionStorage.removeItem("cn_admin_secret");
+  document.getElementById("login").style.display = "flex";
+}
+document.getElementById("secretInput").addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+
+// ── Tabs ──────────────────────────────────────────────────────────────
+function showTab(name) {
+  for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.tab === name);
+  for (const id of ["moderation", "tickets", "signups", "content"]) {
+    document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
+  }
+}
+function refreshAll() { loadModeration(); loadTickets(); loadSignups(); loadContent(); }
+
+// ── Moderation ────────────────────────────────────────────────────────
+async function loadModeration() {
+  const el = document.getElementById("tab-moderation");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { chargers, notes, reports } = await api("pending");
+    const pendingCount = (chargers?.length ?? 0) + (notes?.length ?? 0);
+    const badge = document.getElementById("modBadge");
+    badge.style.display = pendingCount ? "" : "none";
+    badge.textContent = pendingCount;
+
+    let html = `
+      <div class="stats">
+        <div class="stat"><div class="n">${chargers?.length ?? 0}</div><div class="l">Pending chargers</div></div>
+        <div class="stat"><div class="n">${notes?.length ?? 0}</div><div class="l">Pending notes</div></div>
+        <div class="stat"><div class="n">${reports?.length ?? 0}</div><div class="l">Reports</div></div>
+      </div>`;
+
+    html += '<h2 class="section">Pending chargers</h2>';
+    html += chargers?.length ? chargers.map(c => `
+      <div class="card">
+        <h3>${esc(c.title ?? "Charger #" + c.id)} <span class="pill pending">pending</span></h3>
+        <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
+        ${kvBlock(c, ["id", "title", "created_at", "status"])}
+        <div class="actions">
+          <button class="approve" onclick="moderate('charger', ${c.id}, 'approve')">Approve</button>
+          <button class="reject" onclick="moderate('charger', ${c.id}, 'reject')">Reject</button>
+        </div>
+      </div>`).join("") : '<div class="empty">No pending chargers</div>';
+
+    html += '<h2 class="section">Pending notes</h2>';
+    html += notes?.length ? notes.map(n => `
+      <div class="card">
+        <div class="body">${esc(n.text)}</div>
+        <div class="meta" style="margin-top:8px">#${n.id} · ${fmtDate(n.created_at)}</div>
+        ${kvBlock(n, ["id", "text", "created_at", "status"])}
+        <div class="actions">
+          <button class="approve" onclick="moderate('note', ${n.id}, 'approve')">Approve</button>
+          <button class="reject" onclick="moderate('note', ${n.id}, 'reject')">Reject</button>
+        </div>
+      </div>`).join("") : '<div class="empty">No pending notes</div>';
+
+    html += '<h2 class="section">Content reports</h2>';
+    html += reports?.length ? reports.map(r => `
+      <div class="card">
+        <h3>${esc(r.subject ?? "Report #" + r.id)}</h3>
+        <div class="meta">#${r.id} · ${esc(r.kind ?? "")} · ${fmtDate(r.created_at)}</div>
+        <div class="body">${esc(r.detail ?? "")}</div>
+        ${kvBlock(r, ["id", "subject", "kind", "created_at", "detail"])}
+        <div class="actions">
+          <button class="delete" onclick="deleteReport(${r.id})">Dismiss report</button>
+        </div>
+      </div>`).join("") : '<div class="empty">No reports</div>';
+
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+async function moderate(type, id, decision) {
+  await api("moderate", { type, id, decision });
+  toast(decision === "approve" ? "Approved ✓" : "Rejected");
+  loadModeration();
+}
+async function deleteReport(id) {
+  if (!confirm("Dismiss (delete) this report?")) return;
+  await api("deleteReport", { id });
+  toast("Report dismissed");
+  loadModeration();
+}
+
+// ── Tickets ───────────────────────────────────────────────────────────
+async function loadTickets() {
+  const el = document.getElementById("tab-tickets");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { tickets } = await api("tickets");
+    const open = tickets.filter(t => t.status !== "closed");
+    const badge = document.getElementById("ticketBadge");
+    badge.style.display = open.length ? "" : "none";
+    badge.textContent = open.length;
+
+    if (!tickets.length) { el.innerHTML = '<div class="empty">No tickets yet</div>'; return; }
+    const render = t => `
+      <div class="card">
+        <h3>${esc(t.subject)} <span class="pill ${esc(t.status)}">${esc(t.status.replace("_", " "))}</span></h3>
+        <div class="meta">#${t.id} · ${esc(t.category)} · ${fmtDate(t.created_at)} · ${esc(t.name ?? "")} ${t.email ? "&lt;" + esc(t.email) + "&gt;" : ""} ${t.app_version ? "· v" + esc(t.app_version) : ""}</div>
+        <div class="body">${esc(t.detail)}</div>
+        <div class="actions">
+          <input type="text" id="note-${t.id}" placeholder="Internal note…" value="${esc(t.admin_note ?? "")}" style="flex:1;min-width:180px">
+          <button class="neutral" onclick="saveNote(${t.id})">Save note</button>
+          ${t.status !== "in_progress" ? `<button class="neutral" onclick="setTicket(${t.id}, 'in_progress')">In progress</button>` : ""}
+          ${t.status !== "closed" ? `<button class="approve" onclick="setTicket(${t.id}, 'closed')">Close</button>` : `<button class="neutral" onclick="setTicket(${t.id}, 'open')">Reopen</button>`}
+          ${t.email ? `<a class="neutral" style="padding:9px 16px" href="mailto:${esc(t.email)}?subject=${encodeURIComponent("Re: " + t.subject + " — Charge Nomad support")}">Reply by email</a>` : ""}
+          <button class="delete" onclick="deleteTicket(${t.id})">Delete</button>
+        </div>
+      </div>`;
+    const closed = tickets.filter(t => t.status === "closed");
+    el.innerHTML =
+      `<div class="stats">
+        <div class="stat"><div class="n">${open.length}</div><div class="l">Open</div></div>
+        <div class="stat"><div class="n">${closed.length}</div><div class="l">Closed</div></div>
+      </div>` +
+      '<h2 class="section">Open</h2>' + (open.length ? open.map(render).join("") : '<div class="empty">Nothing open 🎉</div>') +
+      (closed.length ? '<h2 class="section">Closed</h2>' + closed.map(render).join("") : "");
+  } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+async function setTicket(id, status) {
+  await api("updateTicket", { id, status });
+  toast("Ticket " + status.replace("_", " "));
+  loadTickets();
+}
+async function saveNote(id) {
+  await api("updateTicket", { id, admin_note: document.getElementById("note-" + id).value });
+  toast("Note saved");
+}
+async function deleteTicket(id) {
+  if (!confirm("Permanently delete this ticket?")) return;
+  await api("deleteTicket", { id });
+  toast("Ticket deleted");
+  loadTickets();
+}
+
+// ── Signups ───────────────────────────────────────────────────────────
+async function loadSignups() {
+  const el = document.getElementById("tab-signups");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { signups } = await api("signups");
+    const now = Date.now();
+    const last7 = signups.filter(s => s.created_at && now - new Date(s.created_at) < 7 * 864e5).length;
+    const last30 = signups.filter(s => s.created_at && now - new Date(s.created_at) < 30 * 864e5).length;
+    const vehicles = {};
+    for (const s of signups) if (s.vehicle_name) vehicles[s.vehicle_name] = (vehicles[s.vehicle_name] || 0) + 1;
+    const topVehicle = Object.entries(vehicles).sort((a, b) => b[1] - a[1])[0];
+
+    el.innerHTML = `
+      <div class="stats">
+        <div class="stat"><div class="n">${signups.length}</div><div class="l">Total signups</div></div>
+        <div class="stat"><div class="n">${last7}</div><div class="l">Last 7 days</div></div>
+        <div class="stat"><div class="n">${last30}</div><div class="l">Last 30 days</div></div>
+        ${topVehicle ? `<div class="stat"><div class="n" style="font-size:16px;padding-top:9px">${esc(topVehicle[0])}</div><div class="l">Top vehicle (${topVehicle[1]})</div></div>` : ""}
+      </div>
+      <div class="tablewrap"><table>
+        <tr><th>When</th><th>Name</th><th>Email</th><th>Vehicle</th><th>News</th></tr>
+        ${signups.map(s => `<tr>
+          <td>${fmtDate(s.created_at)}</td>
+          <td>${esc([s.first_name, s.last_name].filter(Boolean).join(" "))}</td>
+          <td>${esc(s.email)}</td>
+          <td>${esc(s.vehicle_name ?? "")}</td>
+          <td class="ok">${s.news_opt_in ? "✓" : ""}</td>
+        </tr>`).join("")}
+      </table></div>`;
+  } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+
+// ── Content browser ───────────────────────────────────────────────────
+async function loadContent() {
+  const el = document.getElementById("contentResults");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const q = document.getElementById("contentQ").value;
+    const { notes, chargers } = await api("content", { q });
+    let html = '<h2 class="section" style="margin-top:0">Community chargers</h2>';
+    html += chargers?.length ? chargers.map(c => `
+      <div class="card">
+        <h3>${esc(c.title ?? "Charger #" + c.id)} <span class="pill ${esc(c.status ?? "")}">${esc(c.status ?? "")}</span></h3>
+        <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
+        ${kvBlock(c, ["id", "title", "created_at", "status"])}
+        <div class="actions"><button class="delete" onclick="deleteContent('charger', ${c.id})">Delete</button></div>
+      </div>`).join("") : '<div class="empty">No chargers</div>';
+    html += '<h2 class="section">Notes</h2>';
+    html += notes?.length ? notes.map(n => `
+      <div class="card">
+        <div class="body">${esc(n.text)}</div>
+        <div class="meta" style="margin-top:8px">#${n.id} · ${fmtDate(n.created_at)} · <span class="pill ${esc(n.status ?? "")}">${esc(n.status ?? "")}</span></div>
+        ${kvBlock(n, ["id", "text", "created_at", "status"])}
+        <div class="actions"><button class="delete" onclick="deleteContent('note', ${n.id})">Delete</button></div>
+      </div>`).join("") : '<div class="empty">No notes</div>';
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+async function deleteContent(type, id) {
+  if (!confirm(`Permanently delete this ${type}? This can't be undone.`)) return;
+  await api("deleteContent", { type, id });
+  toast("Deleted");
+  loadContent();
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────
+if (SECRET) {
+  document.getElementById("login").style.display = "none";
+  refreshAll();
+}
+</script>
+</body>
+</html>
