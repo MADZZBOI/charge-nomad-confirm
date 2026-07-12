@@ -116,6 +116,12 @@
   input:focus, textarea:focus { outline: none; border-color: rgba(61,220,132,.45); }
   input::placeholder { color: var(--text3); }
 
+  select.tpl {
+    background: var(--elevated); color: var(--text2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  select.tpl:hover { color: var(--text); border-color: var(--border2); }
+
   .searchrow { display: flex; gap: 10px; margin-bottom: 20px; }
   .searchrow input { flex: 1; }
   .searchrow button { background: var(--accent); color: #06130B; padding: 0 22px; font-weight: 700; }
@@ -400,6 +406,10 @@ async function loadTickets() {
         <div class="body">${esc(t.detail)}</div>
         <div class="actions">
           <input type="text" id="reply-${t.id}" placeholder="Reply to user — shown in their app, emailed when resolved…" value="${esc(t.public_reply ?? "")}" style="flex:1;min-width:220px">
+          <select class="tpl" onchange="applyTemplate(${t.id}, this)" data-name="${esc((t.name ?? "").trim().split(" ")[0])}">
+            <option value="">📋 Templates…</option>
+            ${TEMPLATES.map((tp, i) => `<option value="${i}">${esc(tp.label)}</option>`).join("")}
+          </select>
           <button class="neutral" onclick="saveReply(${t.id})">Save reply</button>
         </div>
         <div class="actions">
@@ -428,6 +438,23 @@ async function setTicket(id, status) {
 async function saveNote(id) {
   await api("updateTicket", { id, admin_note: document.getElementById("note-" + id).value });
   toast("Note saved");
+}
+// Free, offline reply templates. {name} becomes the user's first name
+// (or "there" when we don't have one). Edit these to taste.
+const TEMPLATES = [
+  { label: "Received / looking into it", text: "Hi {name}, thanks for reaching out — we've received your report and we're looking into it now. We'll update you here as soon as we know more." },
+  { label: "Fixed in next update", text: "Hi {name}, thanks for the report — great spot! We've fixed this and it will be included in the next app update. Thanks for helping make Charge Nomad better." },
+  { label: "Need more info", text: "Hi {name}, thanks for getting in touch. To help us track this down, could you let us know what device you're using and roughly when the issue happened? Any extra detail helps a lot." },
+  { label: "Feature idea — noted", text: "Hi {name}, thanks for the suggestion! We've added it to our feature list and we'll weigh it up for a future update. Ideas like this genuinely shape where the app goes next." },
+  { label: "Can't reproduce", text: "Hi {name}, thanks for the report. We've tried to reproduce this on our end but haven't been able to so far. If it happens again, could you note what screen you were on and what you tapped just before? That would really help." },
+  { label: "Resolved — thanks", text: "Hi {name}, this has now been resolved. Thanks again for taking the time to report it — if anything else comes up, don't hesitate to file another ticket." },
+];
+function applyTemplate(id, sel) {
+  if (sel.value === "") return;
+  const name = sel.dataset.name || "there";
+  document.getElementById("reply-" + id).value = TEMPLATES[Number(sel.value)].text.replaceAll("{name}", name);
+  sel.value = "";
+  toast("Template applied — tweak it, then Save reply");
 }
 async function saveReply(id) {
   await api("updateTicket", { id, public_reply: document.getElementById("reply-" + id).value });
