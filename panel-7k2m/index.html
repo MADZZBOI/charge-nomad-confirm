@@ -420,7 +420,7 @@ async function loadTickets() {
           <input type="text" id="note-${t.id}" placeholder="Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="flex:1;min-width:180px">
           <button class="neutral" onclick="saveNote(${t.id})">Save note</button>
           ${t.status !== "in_progress" && t.status !== "closed" ? `<button class="neutral" onclick="setTicket(${t.id}, 'in_progress')">In progress</button>` : ""}
-          ${t.status !== "closed" ? `<button class="approve" onclick="resolveTicket(${t.id}, ${JSON.stringify(esc(t.email ?? ""))})">Resolve${t.email ? " &amp; email" : ""}</button>` : `<button class="neutral" onclick="setTicket(${t.id}, 'open')">Reopen</button>`}
+          ${t.status !== "closed" ? `<button class="approve" onclick="resolveTicket(${t.id}, '${esc(t.email ?? "")}')">Resolve${t.email ? " &amp; email" : ""}</button>` : `<button class="neutral" onclick="setTicket(${t.id}, 'open')">Reopen</button>`}
           <button class="delete" onclick="deleteTicket(${t.id})">Delete</button>
         </div>
       </div>`;
