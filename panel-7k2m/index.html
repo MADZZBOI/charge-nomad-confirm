@@ -116,6 +116,20 @@
   input:focus, textarea:focus { outline: none; border-color: rgba(61,220,132,.45); }
   input::placeholder { color: var(--text3); }
 
+  /* Conversation thread */
+  .thread { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .thread.open { display: block; }
+  .bubble { max-width: 82%; padding: 10px 14px; border-radius: 12px; margin-bottom: 8px; font-size: 14px; white-space: pre-wrap; word-break: break-word; color: var(--text2); }
+  .bubble.user { background: var(--elevated); margin-right: auto; }
+  .bubble.admin { background: var(--accent-dim); border: 1px solid rgba(61,220,132,.2); margin-left: auto; color: var(--text); }
+  .bubble .who { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 3px; }
+
+  /* Daily checklist */
+  label.check { display: flex; align-items: center; gap: 12px; padding: 9px 4px; cursor: pointer; font-size: 14px; color: var(--text2); }
+  label.check input { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+  label.check.done span { text-decoration: line-through; color: var(--text3); }
+  .rowlink:hover { border-color: rgba(61,220,132,.3); }
+
   select.tpl {
     background: var(--elevated); color: var(--text2); border: 1px solid var(--border);
     border-radius: 10px; padding: 9px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -197,14 +211,16 @@
 </header>
 
 <nav>
-  <button data-tab="moderation" class="active" onclick="showTab('moderation')">Moderation <span class="badge" id="modBadge" style="display:none"></span></button>
+  <button data-tab="home" class="active" onclick="showTab('home')">Home</button>
+  <button data-tab="moderation" onclick="showTab('moderation')">Moderation <span class="badge" id="modBadge" style="display:none"></span></button>
   <button data-tab="tickets" onclick="showTab('tickets')">Tickets <span class="badge" id="ticketBadge" style="display:none"></span></button>
   <button data-tab="signups" onclick="showTab('signups')">Signups</button>
   <button data-tab="content" onclick="showTab('content')">Content</button>
 </nav>
 
 <main>
-  <div id="tab-moderation"></div>
+  <div id="tab-home"></div>
+  <div id="tab-moderation" style="display:none"></div>
   <div id="tab-tickets" style="display:none"></div>
   <div id="tab-signups" style="display:none"></div>
   <div id="tab-content" style="display:none">
@@ -283,12 +299,99 @@ document.getElementById("secretInput").addEventListener("keydown", e => { if (e.
 // ── Tabs ──────────────────────────────────────────────────────────────
 function showTab(name) {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.tab === name);
-  for (const id of ["moderation", "tickets", "signups", "content"]) {
+  for (const id of ["home", "moderation", "tickets", "signups", "content"]) {
     document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
   }
 }
-function refreshAll() { loadModeration(); loadTickets(); loadSignups(); loadContent(); }
+function refreshAll() { loadHome(); loadModeration(); loadTickets(); loadSignups(); loadContent(); }
 function toggleCard(el) { el.parentElement.classList.toggle("open"); }
+
+// ── Home dashboard ────────────────────────────────────────────────────
+const CHECKLIST = [
+  "Check Moderation for pending chargers and notes",
+  "Reply to any open support tickets",
+  "Open the app: map loads and charger search works",
+  "Run a quick Trip Planner estimate to confirm it calculates",
+  "Check Supabase Edge Function logs for errors",
+  "Glance at new signups for anything unusual",
+];
+function checklistState() {
+  const key = "cn_checklist_" + new Date().toISOString().slice(0, 10);
+  let state = [];
+  try { state = JSON.parse(localStorage.getItem(key)) || []; } catch {}
+  return { key, state };
+}
+function toggleCheck(i) {
+  const { key, state } = checklistState();
+  state[i] = !state[i];
+  localStorage.setItem(key, JSON.stringify(state));
+  loadHomeChecklist();
+}
+function loadHomeChecklist() {
+  const el = document.getElementById("checklist");
+  if (!el) return;
+  const { state } = checklistState();
+  const done = CHECKLIST.filter((_, i) => state[i]).length;
+  el.innerHTML = `
+    <h2 class="section">Daily checklist · ${done}/${CHECKLIST.length} done today</h2>
+    <div class="card">${CHECKLIST.map((item, i) => `
+      <label class="check ${state[i] ? "done" : ""}">
+        <input type="checkbox" ${state[i] ? "checked" : ""} onchange="toggleCheck(${i})">
+        <span>${esc(item)}</span>
+      </label>`).join("")}
+    </div>`;
+}
+async function loadHome() {
+  const el = document.getElementById("tab-home");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const o = await api("overview");
+    const h = new Date().getHours();
+    const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    const last7 = o.signups.filter(s => s.created_at && Date.now() - new Date(s.created_at) < 7 * 864e5).length;
+    const modCount = o.pendingChargers.count + o.pendingNotes.count;
+
+    const attention = [
+      ...o.openTickets.items.map(t => ({ when: t.created_at, icon: "🎫", text: `Ticket: ${t.subject}`, sub: t.status.replace("_", " "), tab: "tickets" })),
+      ...o.pendingChargers.items.map(c => ({ when: c.created_at, icon: "⚡", text: `Charger awaiting review: ${c.title ?? "#" + c.id}`, sub: "pending", tab: "moderation" })),
+      ...o.pendingNotes.items.map(n => ({ when: n.created_at, icon: "📝", text: `Note awaiting review: ${String(n.text ?? "").slice(0, 60)}`, sub: "pending", tab: "moderation" })),
+      ...o.reports.items.map(r => ({ when: r.created_at, icon: "🚩", text: `Report: ${r.subject ?? "#" + r.id}`, sub: "report", tab: "moderation" })),
+    ].sort((a, b) => new Date(b.when) - new Date(a.when)).slice(0, 8);
+
+    const recentSignups = o.signups.slice(0, 5);
+
+    el.innerHTML = `
+      <h2 class="section" style="margin-top:0">${greet}, Adam</h2>
+      <div class="stats">
+        <div class="stat"><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
+        <div class="stat"><div class="n">${modCount}</div><div class="l">Awaiting moderation</div></div>
+        <div class="stat"><div class="n">${o.reports.count}</div><div class="l">Content reports</div></div>
+        <div class="stat"><div class="n">${last7}</div><div class="l">Signups last 7 days</div></div>
+      </div>
+
+      <h2 class="section">Needs your attention</h2>
+      ${attention.length ? attention.map(a => `
+        <div class="card rowlink" onclick="showTab('${a.tab}')">
+          <div class="summary" style="cursor:pointer">
+            <span style="font-size:16px">${a.icon}</span>
+            <div class="grow">
+              <h3 style="font-size:14px">${esc(a.text)}</h3>
+              <span class="sub">${esc(a.sub)} · ${fmtDate(a.when)}</span>
+            </div>
+          </div>
+        </div>`).join("") : '<div class="empty">All clear, nothing waiting on you 🎉</div>'}
+
+      <div id="checklist"></div>
+
+      <h2 class="section">Latest signups</h2>
+      ${recentSignups.length ? `<div class="card">${recentSignups.map(s => `
+        <div class="kv" style="padding:4px 0">
+          <b>${fmtDate(s.created_at)}</b>${esc(s.first_name ?? "Someone")}${s.vehicle_name ? " · " + esc(s.vehicle_name) : ""}
+        </div>`).join("")}</div>` : '<div class="empty">No signups yet</div>'}
+    `;
+    loadHomeChecklist();
+  } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
 
 // ── Moderation ────────────────────────────────────────────────────────
 async function loadModeration() {
@@ -408,13 +511,17 @@ async function loadTickets() {
         <h3>${esc(t.subject)} <span class="pill ${esc(t.status)}">${esc(t.status.replace("_", " "))}</span></h3>
         <div class="meta">#${t.id} · ${esc(t.category)} · ${fmtDate(t.created_at)} · ${esc(t.name ?? "")} ${t.email ? "&lt;" + esc(t.email) + "&gt;" : ""} ${t.app_version ? "· v" + esc(t.app_version) : ""}</div>
         <div class="body">${esc(t.detail)}</div>
-        <div class="actions">
-          <input type="text" id="reply-${t.id}" placeholder="Reply to user — shown in their app, emailed when resolved…" value="${esc(t.public_reply ?? "")}" style="flex:1;min-width:220px">
-          <select class="tpl" onchange="applyTemplate(${t.id}, this)" data-name="${esc((t.name ?? "").trim().split(" ")[0])}">
-            <option value="">📋 Templates…</option>
-            ${TEMPLATES.map((tp, i) => `<option value="${i}">${esc(tp.label)}</option>`).join("")}
-          </select>
-          <button class="neutral" onclick="saveReply(${t.id})">Save reply</button>
+        <div class="thread" id="thread-${t.id}"></div>
+        <div class="actions" style="align-items:flex-start">
+          <textarea id="reply-${t.id}" rows="4" placeholder="Reply to user. Shown in their app, emailed when resolved." style="flex:1;min-width:220px;resize:vertical">${esc(t.public_reply ?? "")}</textarea>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <select class="tpl" onchange="applyTemplate(${t.id}, this)" data-name="${esc((t.name ?? "").trim().split(" ")[0])}">
+              <option value="">📋 Templates…</option>
+              ${TEMPLATES.map((tp, i) => `<option value="${i}">${esc(tp.label)}</option>`).join("")}
+            </select>
+            <button class="approve" onclick="sendReply(${t.id})">Send reply</button>
+            <button class="neutral" onclick="toggleThread(${t.id})">💬 Conversation</button>
+          </div>
         </div>
         <div class="actions">
           <input type="text" id="note-${t.id}" placeholder="Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="flex:1;min-width:180px">
@@ -450,25 +557,45 @@ async function saveNote(id) {
 // Free, offline reply templates. {name} becomes the user's first name
 // (or "there" when we don't have one). Edit these to taste.
 const TEMPLATES = [
-  { label: "Received / looking into it", text: "Hi {name}, thanks for reaching out — we've received your report and we're looking into it now. We'll update you here as soon as we know more." },
-  { label: "Fixed in next update", text: "Hi {name}, thanks for the report — great spot! We've fixed this and it will be included in the next app update. Thanks for helping make Charge Nomad better." },
-  { label: "Need more info", text: "Hi {name}, thanks for getting in touch. To help us track this down, could you let us know what device you're using and roughly when the issue happened? Any extra detail helps a lot." },
-  { label: "Feature idea — noted", text: "Hi {name}, thanks for the suggestion! We've added it to our feature list and we'll weigh it up for a future update. Ideas like this genuinely shape where the app goes next." },
+  { label: "Received / looking into it", text: "Hi {name}, thank you for reaching out. We've received your report and we're looking into it now. We'll update you here as soon as we know more." },
+  { label: "Fixed in next update", text: "Hi {name}, thank you for the report, great spot! We've fixed this and it will be included in the next app update. We really appreciate you helping make Charge Nomad better." },
+  { label: "Need more info", text: "Hi {name}, thanks for getting in touch. To help us track this down, could you let us know what device you're using and roughly when the issue happened? Any extra detail helps a lot. You can reply right here in the app." },
+  { label: "Feature idea, noted", text: "Hi {name}, thank you for the suggestion! We've added it to our feature list and we'll see if we can bring it to a future update. Ideas like this genuinely shape where the app goes next." },
   { label: "Can't reproduce", text: "Hi {name}, thanks for the report. We've tried to reproduce this on our end but haven't been able to so far. If it happens again, could you note what screen you were on and what you tapped just before? That would really help." },
-  { label: "Resolved — thanks", text: "Hi {name}, this has now been resolved. Thanks again for taking the time to report it — if anything else comes up, don't hesitate to file another ticket." },
+  { label: "Resolved, thanks", text: "Hi {name}, this has now been resolved. Thank you again for taking the time to report it, and we hope the app is even better for you from here. If anything else comes up, don't hesitate to get in touch." },
 ];
 function applyTemplate(id, sel) {
   if (sel.value === "") return;
   const name = sel.dataset.name || "there";
   document.getElementById("reply-" + id).value = TEMPLATES[Number(sel.value)].text.replaceAll("{name}", name);
   sel.value = "";
-  toast("Template applied — tweak it, then Save reply");
+  toast("Template applied. Tweak it, then Send reply");
 }
-async function saveReply(id) {
+async function sendReply(id) {
+  const text = document.getElementById("reply-" + id).value.trim();
+  if (!text) { toast("Write a reply first"); return; }
   try {
-    await api("updateTicket", { id, public_reply: document.getElementById("reply-" + id).value });
-    toast("Reply saved — visible in the user's app");
+    await api("adminReply", { id, text });
+    toast("Reply sent. The user will see it in the app");
+    const threadEl = document.getElementById("thread-" + id);
+    if (threadEl && threadEl.classList.contains("open")) loadThread(id);
   } catch (e) { toast("Failed: " + e.message); }
+}
+async function toggleThread(id) {
+  const el = document.getElementById("thread-" + id);
+  el.classList.toggle("open");
+  if (el.classList.contains("open")) loadThread(id);
+}
+async function loadThread(id) {
+  const el = document.getElementById("thread-" + id);
+  el.innerHTML = '<div class="empty" style="padding:12px 0">Loading…</div>';
+  try {
+    const { messages } = await api("ticketThread", { id });
+    el.innerHTML = messages.length ? messages.map(m => `
+      <div class="bubble ${esc(m.sender)}">
+        <div class="who">${m.sender === "admin" ? "You" : "User"} · ${fmtDate(m.created_at)}</div>${esc(m.text)}
+      </div>`).join("") : '<div class="empty" style="padding:12px 0">No messages yet. Send a reply to start the conversation.</div>';
+  } catch (e) { el.innerHTML = `<div class="empty err" style="padding:12px 0">Failed: ${esc(e.message)}</div>`; }
 }
 async function resolveTicket(id, email) {
   const msg = email
@@ -477,7 +604,7 @@ async function resolveTicket(id, email) {
   if (!confirm(msg)) return;
   try {
     const r = await api("updateTicket", { id, status: "closed", public_reply: document.getElementById("reply-" + id).value });
-    toast(r.emailed ? "Resolved — user emailed ✓" : "Resolved ✓ (no email on this ticket)");
+    toast(r.emailed ? "Resolved, user emailed ✓" : "Resolved ✓ (no email on this ticket)");
     loadTickets();
   } catch (e) { toast("Failed: " + e.message); }
 }
