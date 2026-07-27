@@ -42,8 +42,8 @@
   header h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
   header h1 span { color: var(--accent); }
   header .spacer { flex: 1; }
-  #refreshBtn, #logout { background: var(--elevated); color: var(--text2); padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); }
-  #refreshBtn:hover, #logout:hover { color: var(--text); border-color: var(--border2); }
+  #refreshBtn, #logout, #notifyBtn { background: var(--elevated); color: var(--text2); padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); }
+  #refreshBtn:hover, #logout:hover, #notifyBtn:hover { color: var(--text); border-color: var(--border2); }
 
   /* ── Nav ────────────────────────────────────────────── */
   nav {
@@ -244,6 +244,26 @@
     box-shadow: 0 10px 30px rgba(0,0,0,.5); white-space: nowrap;
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Signups chart ──────────────────────────────────── */
+  .chartcard { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; }
+  .chartcard h3 { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 2px; }
+  .chartcard .chartsub { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+  .chartwrap { position: relative; }
+  .chartwrap svg { display: block; width: 100%; height: 120px; }
+  .chartwrap .bar { fill: var(--accent); }
+  .chartwrap .bar.dim { fill: rgba(61,220,132,.35); }
+  .chartwrap .hit { fill: transparent; cursor: default; }
+  .chartwrap g:hover .bar { filter: brightness(1.25); }
+  #chartTip {
+    position: absolute; pointer-events: none; display: none; z-index: 3;
+    background: var(--elevated); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 6px 10px; font-size: 12px; color: var(--text); white-space: nowrap;
+    box-shadow: 0 6px 18px rgba(0,0,0,.45); transform: translate(-50%, -110%);
+  }
+  #chartTip b { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+  #notifyBtn.on { color: var(--accent); border-color: rgba(61,220,132,.35); }
 </style>
 </head>
 <body>
@@ -263,6 +283,7 @@
   <img src="https://madzzboi.github.io/charge-nomad-confirm/logo.png" alt="">
   <h1>Charge Nomad <span>Admin</span></h1>
   <div class="spacer"></div>
+  <button id="notifyBtn" onclick="toggleNotify()" title="Browser notification when a new ticket arrives">🔔</button>
   <button id="refreshBtn" onclick="refreshAll(); toast('Refreshed')">Refresh</button>
   <button id="logout" onclick="logout()">Lock</button>
 </header>
@@ -273,6 +294,7 @@
   <button data-tab="tickets" onclick="showTab('tickets')">Tickets <span class="badge" id="ticketBadge" style="display:none"></span></button>
   <button data-tab="signups" onclick="showTab('signups')">Signups</button>
   <button data-tab="content" onclick="showTab('content')">Content</button>
+  <button data-tab="recovery" onclick="showTab('recovery')">Recovery</button>
 </nav>
 
 <main>
@@ -311,6 +333,16 @@
       <button onclick="loadContent()">Search</button>
     </div>
     <div id="contentResults"></div>
+  </div>
+  <div id="tab-recovery" style="display:none">
+    <div class="searchrow">
+      <input type="text" id="recoveryEmail" placeholder="User's account email…" onkeydown="if(event.key==='Enter')lookupRecoveryUser()">
+      <button onclick="lookupRecoveryUser()">Look up</button>
+    </div>
+    <p style="color:#9BA69F;font-size:13px;margin:8px 0 16px">
+      Only use this after verifying identity via a support ticket. This removes the user's authenticator app requirement so they can sign in with just their email code, then set up 2FA again from the app.
+    </p>
+    <div id="recoveryResult"></div>
   </div>
 </main>
 
@@ -384,12 +416,53 @@ document.getElementById("secretInput").addEventListener("keydown", e => { if (e.
 // ── Tabs ──────────────────────────────────────────────────────────────
 function showTab(name) {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.tab === name);
-  for (const id of ["home", "moderation", "tickets", "signups", "content"]) {
+  for (const id of ["home", "moderation", "tickets", "signups", "content", "recovery"]) {
     document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
   }
 }
 function refreshAll() { loadHome(); loadModeration(); loadTickets(); loadSignups(); loadContent(); }
 function toggleCard(el) { el.parentElement.classList.toggle("open"); }
+
+// ── Account recovery (2FA lockouts) ─────────────────────────────────────
+let RECOVERY_USER = null;
+async function lookupRecoveryUser() {
+  const email = document.getElementById("recoveryEmail").value.trim();
+  const out = document.getElementById("recoveryResult");
+  if (!email) return;
+  out.innerHTML = "<div class=\"empty\">Looking up…</div>";
+  RECOVERY_USER = null;
+  try {
+    const data = await api("findUserByEmail", { email });
+    if (!data.found) {
+      out.innerHTML = "<div class=\"empty\">No account found for that email.</div>";
+      return;
+    }
+    if (!data.mfaEnrolled) {
+      out.innerHTML = `<div class="empty">${esc(data.email)} doesn't have two-factor authentication enabled — nothing to remove.</div>`;
+      return;
+    }
+    RECOVERY_USER = data;
+    out.innerHTML = `
+      <div class="card open">
+        <p>${esc(data.email)} has two-factor authentication enabled.</p>
+        <button onclick="removeRecoveryMFA()" style="background:#d64545">Remove 2FA and let them sign in with email only</button>
+      </div>`;
+  } catch (e) {
+    out.innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
+  }
+}
+async function removeRecoveryMFA() {
+  if (!RECOVERY_USER) return;
+  if (!confirm(`Remove two-factor authentication for ${RECOVERY_USER.email}? Only do this after verifying their identity.`)) return;
+  try {
+    await api("removeMFA", { userId: RECOVERY_USER.userId, factorIds: RECOVERY_USER.factorIds });
+    toast("2FA removed — they can sign in with email only now");
+    document.getElementById("recoveryResult").innerHTML = `<div class="empty">Done. ${esc(RECOVERY_USER.email)} can now sign in with just their email code.</div>`;
+    RECOVERY_USER = null;
+  } catch (e) {
+    toast("Error: " + e.message);
+  }
+}
 
 // ── Home dashboard ────────────────────────────────────────────────────
 const CHECKLIST = [
@@ -592,6 +665,7 @@ async function loadTickets() {
   try {
     const { tickets } = await api("tickets");
     LAST_TICKETS = tickets;
+    checkNewTickets(tickets);
     const open = tickets.filter(t => t.status !== "closed");
     const badge = document.getElementById("ticketBadge");
     badge.style.display = open.length ? "" : "none";
@@ -605,6 +679,9 @@ async function loadTickets() {
         <div class="stat green"><div class="n">${needsReply.length}</div><div class="l">Needs a reply</div></div>
         <div class="stat blue"><div class="n">${inProgress.length}</div><div class="l">In progress</div></div>
         <div class="stat amber"><div class="n">${closed.length}</div><div class="l">Resolved</div></div>
+      </div>
+      <div class="actions" style="margin:-8px 0 14px">
+        <button class="neutral" onclick="downloadTicketsCSV()">⬇️ Download tickets CSV</button>
       </div>`;
     renderTicketList();
   } catch (e) { list.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
@@ -641,6 +718,19 @@ function renderTicketList() {
     (closed.length ? '<h2 class="section">Resolved</h2>' + closed.map(ticketRow).join("") : "") +
     (!needsReply.length && !inProgress.length && !closed.length ? '<div class="empty">No tickets match your search</div>' : "");
 }
+function downloadTicketsCSV() {
+  if (!LAST_TICKETS.length) { toast("No tickets yet"); return; }
+  const cols = ["id", "created_at", "status", "category", "subject", "detail", "name", "email", "app_version", "public_reply", "admin_note"];
+  const cell = v => `"${String(v ?? "").replaceAll('"', '""')}"`;
+  const csv = [cols.join(","), ...LAST_TICKETS.map(t => cols.map(c => cell(t[c])).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `charge-nomad-tickets-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("CSV downloaded");
+}
+
 // Free, offline reply templates. {name} becomes the user's first name
 // (or "there" when we don't have one). Edit these to taste.
 const TEMPLATES = [
@@ -787,6 +877,62 @@ async function sendConvo() {
     TEMPLATES.map((tp, i) => `<option value="${i}">${esc(tp.label)}</option>`).join("");
 })();
 
+// ── Signups chart (last 30 days, daily) ──────────────────────────────
+function signupChartHTML(signups) {
+  const days = [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(today); d.setDate(d.getDate() - i);
+    days.push({ date: d, count: 0 });
+  }
+  for (const s of signups) {
+    if (!s.created_at) continue;
+    const d = new Date(s.created_at); d.setHours(0, 0, 0, 0);
+    const idx = Math.round((d - days[0].date) / 864e5);
+    if (idx >= 0 && idx < 30) days[idx].count++;
+  }
+  const max = Math.max(1, ...days.map(d => d.count));
+  const W = 600, H = 120, PAD = 2, bw = W / 30 - PAD;
+  const bars = days.map((d, i) => {
+    const h = d.count ? Math.max(3, (d.count / max) * (H - 8)) : 0;
+    const x = i * (W / 30), y = H - h;
+    const label = d.date.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+    return `
+      <g data-label="${label}" data-count="${d.count}">
+        ${d.count ? `<rect class="bar ${d.count === max ? "" : "dim"}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="4"/>` : ""}
+        <rect class="hit" x="${x.toFixed(1)}" y="0" width="${(bw + PAD).toFixed(1)}" height="${H}"/>
+      </g>`;
+  }).join("");
+  const total = days.reduce((a, d) => a + d.count, 0);
+  return `
+  <div class="chartcard">
+    <h3>Signups · last 30 days</h3>
+    <div class="chartsub">${total} total · peak ${Math.max(0, ...days.map(d => d.count))} in a day</div>
+    <div class="chartwrap" id="signupChart">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <line x1="0" y1="${H - .5}" x2="${W}" y2="${H - .5}" stroke="var(--border)" stroke-width="1"/>
+        ${bars}
+      </svg>
+      <div id="chartTip"></div>
+    </div>
+  </div>`;
+}
+function wireChartTip() {
+  const wrap = document.getElementById("signupChart");
+  if (!wrap) return;
+  const tip = document.getElementById("chartTip");
+  wrap.querySelectorAll("g[data-label]").forEach(g => {
+    g.addEventListener("mousemove", e => {
+      const r = wrap.getBoundingClientRect();
+      tip.style.display = "block";
+      tip.style.left = (e.clientX - r.left) + "px";
+      tip.style.top = (e.clientY - r.top) + "px";
+      tip.innerHTML = `${g.dataset.label} · <b>${g.dataset.count}</b> signup${g.dataset.count === "1" ? "" : "s"}`;
+    });
+    g.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  });
+}
+
 // ── Signups ───────────────────────────────────────────────────────────
 async function loadSignups() {
   const el = document.getElementById("tab-signups");
@@ -808,6 +954,7 @@ async function loadSignups() {
         <div class="stat"><div class="n">${last30}</div><div class="l">Last 30 days</div></div>
         ${topVehicle ? `<div class="stat pink"><div class="n" style="font-size:16px;padding-top:9px">${esc(topVehicle[0])}</div><div class="l">Top vehicle (${topVehicle[1]})</div></div>` : ""}
       </div>
+      ${signupChartHTML(signups)}
       <div class="actions" style="margin-bottom:14px">
         <button class="neutral" onclick="copySignupEmails()">📧 Copy newsletter emails</button>
         <button class="neutral" onclick="downloadSignupsCSV()">⬇️ Download CSV</button>
@@ -822,6 +969,7 @@ async function loadSignups() {
           <td class="ok">${s.news_opt_in ? "✓" : ""}</td>
         </tr>`).join("")}
       </table></div>`;
+    wireChartTip();
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
 }
 
@@ -905,7 +1053,67 @@ async function deleteContent(type, id) {
   loadContent();
 }
 
+// ── Auto-refresh + new-ticket notifications ──────────────────────────
+// Polls tickets every 60s. When the 🔔 toggle is on and a ticket with a
+// higher id than anything we've seen arrives, fires a browser notification.
+let notifyOn = localStorage.getItem("cn_notify") === "1";
+let maxSeenTicketId = null;
+
+function renderNotifyBtn() {
+  const b = document.getElementById("notifyBtn");
+  b.classList.toggle("on", notifyOn);
+  b.textContent = notifyOn ? "🔔 On" : "🔔";
+}
+async function toggleNotify() {
+  if (!notifyOn) {
+    if (!("Notification" in window)) { toast("This browser doesn't support notifications"); return; }
+    if (Notification.permission !== "granted") {
+      const p = await Notification.requestPermission();
+      if (p !== "granted") { toast("Notifications blocked by the browser"); return; }
+    }
+    notifyOn = true;
+    toast("You'll be notified of new tickets while this tab is open");
+  } else {
+    notifyOn = false;
+    toast("Ticket notifications off");
+  }
+  localStorage.setItem("cn_notify", notifyOn ? "1" : "0");
+  renderNotifyBtn();
+}
+function checkNewTickets(tickets) {
+  const maxId = tickets.reduce((m, t) => Math.max(m, t.id), 0);
+  const isFirstLoad = maxSeenTicketId === null;
+  if (!isFirstLoad && maxId > maxSeenTicketId && notifyOn && Notification.permission === "granted") {
+    const fresh = tickets.filter(t => t.id > maxSeenTicketId);
+    new Notification("Charge Nomad — new ticket", {
+      body: fresh.length === 1 ? fresh[0].subject : `${fresh.length} new tickets`,
+      icon: "https://madzzboi.github.io/charge-nomad-confirm/logo.png",
+    });
+  }
+  if (maxId > (maxSeenTicketId ?? -1)) maxSeenTicketId = maxId;
+}
+setInterval(() => { if (SECRET) loadTickets(); }, 60_000);
+
+// ── Keyboard shortcuts ────────────────────────────────────────────────
+// 1–5 switch tabs, r refreshes, / focuses the search on the current tab.
+const TAB_KEYS = { "1": "home", "2": "moderation", "3": "tickets", "4": "signups", "5": "content" };
+document.addEventListener("keydown", e => {
+  if (!SECRET || e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  if (TAB_KEYS[e.key]) { showTab(TAB_KEYS[e.key]); }
+  else if (e.key === "r") { refreshAll(); toast("Refreshed"); }
+  else if (e.key === "/") {
+    e.preventDefault();
+    const active = document.querySelector("nav button.active")?.dataset.tab;
+    const input = active === "content" ? document.getElementById("contentQ")
+      : active === "tickets" ? document.getElementById("ticketSearch") : null;
+    if (input) input.focus(); else { showTab("tickets"); document.getElementById("ticketSearch").focus(); }
+  }
+});
+
 // ── Boot ──────────────────────────────────────────────────────────────
+renderNotifyBtn();
 if (SECRET) {
   document.getElementById("login").style.display = "none";
   refreshAll();
