@@ -79,6 +79,23 @@
   .stat.blue   { border-top: 3px solid var(--blue); }    .stat.blue .n   { color: var(--blue); }
   .stat.amber  { border-top: 3px solid var(--warn); }    .stat.amber .n  { color: var(--warn); }
   .stat.pink   { border-top: 3px solid var(--pink); }    .stat.pink .n   { color: var(--pink); }
+  .stat.sel    { border-color: rgba(61,220,132,.5); background: linear-gradient(160deg, var(--accent-dim), var(--card)); }
+
+  /* ── Moderation sub-nav ─────────────────────────────── */
+  .modnav {
+    display: flex; gap: 6px; margin: 4px 0 20px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); padding-bottom: 14px;
+  }
+  .modnav button {
+    background: var(--elevated); color: var(--text2); padding: 8px 14px;
+    font-weight: 600; font-size: 13px; border: 1px solid var(--border); border-radius: 10px;
+  }
+  .modnav button:hover { color: var(--text); border-color: var(--border2); }
+  .modnav button.active { background: var(--accent-dim); color: var(--accent); border-color: rgba(61,220,132,.35); }
+  .modnav button .badge {
+    background: var(--danger); color: #fff; border-radius: 99px;
+    padding: 1px 7px; font-size: 11px; font-weight: 700; margin-left: 4px;
+  }
 
   .hero { margin: 8px 0 20px; }
   .hero h1 {
@@ -159,10 +176,14 @@
   .neutral:hover { color: var(--text); border-color: var(--border2); }
   a.neutral { text-decoration: none; border-radius: 10px; }
 
+  .editform { display: flex; flex-direction: column; gap: 8px; }
+  .editform label { display: block; font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  .editform input, .editform select { width: 100%; box-sizing: border-box; }
+
   .pill { display: inline-block; border-radius: 99px; padding: 2px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
   .pill.open, .pill.pending { background: var(--warn-dim); color: var(--warn); }
-  .pill.in_progress, .pill.approved { background: var(--accent-dim); color: var(--accent); }
-  .pill.closed { background: var(--elevated); color: var(--text3); }
+  .pill.in_progress, .pill.approved, .pill.resolved { background: var(--accent-dim); color: var(--accent); }
+  .pill.closed, .pill.dismissed { background: var(--elevated); color: var(--text3); }
   .pill.rejected { background: var(--danger-dim); color: var(--danger); }
 
   input[type=text], input[type=password], textarea {
@@ -517,7 +538,7 @@ async function loadHome() {
     const h = new Date().getHours();
     const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
     const last7 = o.signups.filter(s => s.created_at && Date.now() - new Date(s.created_at) < 7 * 864e5).length;
-    const modCount = o.pendingChargers.count + o.pendingNotes.count;
+    const modCount = o.pendingChargers.count + o.pendingNotes.count + o.pendingRates.count + o.pendingEditSuggestions.count;
     const allClear = o.openTickets.count + modCount + o.reports.count === 0;
 
     // Just the top 3 most recent things that need action, nothing more.
@@ -557,25 +578,52 @@ async function loadHome() {
 }
 
 // ── Moderation ────────────────────────────────────────────────────────
+// Sub-tabbed (Chargers / Notes / Reports / Rate reports / Edit
+// suggestions) rather than one long scrolling page — with more users
+// each queue only grows, and a single-page layout would mean scrolling
+// further past everything else just to reach whichever's at the bottom.
+// Data for all five is still fetched together (cheap, avoids a spinner
+// per sub-tab switch); only the rendered section changes.
+const EDIT_FIELD_LABELS = {
+  connector_type: "Connector type", power_kw: "Power (kW)",
+  operator_name: "Operator name", address: "Address", access_info: "Access info",
+};
+const MOD_SECTIONS = [
+  { key: "chargers", label: "Chargers" },
+  { key: "notes", label: "Notes" },
+  { key: "reports", label: "Reports" },
+  { key: "rates", label: "Rate reports" },
+  { key: "suggestions", label: "Edit suggestions" },
+];
+
 async function loadModeration() {
   const el = document.getElementById("tab-moderation");
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const { chargers, notes, reports } = await api("pending");
-    const pendingCount = (chargers?.length ?? 0) + (notes?.length ?? 0);
+    const [{ chargers, notes, reports }, { rates }, { suggestions }] = await Promise.all([
+      api("pending"),
+      api("pendingRates"),
+      api("pendingEditSuggestions"),
+    ]);
+    window._modChargers = chargers ?? [];
+    window._modNotes = notes ?? [];
+    window._modRates = rates ?? [];
+    window._modEditSuggestions = suggestions ?? [];
+    window._modCounts = {
+      chargers: chargers?.length ?? 0,
+      notes: notes?.length ?? 0,
+      reports: reports?.length ?? 0,
+      rates: rates?.length ?? 0,
+      suggestions: suggestions?.length ?? 0,
+    };
+    const pendingCount = window._modCounts.chargers + window._modCounts.notes + window._modCounts.rates + window._modCounts.suggestions;
     const badge = document.getElementById("modBadge");
     badge.style.display = pendingCount ? "" : "none";
     badge.textContent = pendingCount;
 
-    let html = `
-      <div class="stats">
-        <div class="stat"><div class="n">${chargers?.length ?? 0}</div><div class="l">Pending chargers</div></div>
-        <div class="stat"><div class="n">${notes?.length ?? 0}</div><div class="l">Pending notes</div></div>
-        <div class="stat"><div class="n">${reports?.length ?? 0}</div><div class="l">Reports</div></div>
-      </div>`;
+    const sec = {};
 
-    html += '<h2 class="section">Pending chargers</h2>';
-    html += chargers?.length ? chargers.map(c => {
+    sec.chargers = chargers?.length ? chargers.map(c => {
       const place = [c.town, c.state_or_province].filter(Boolean).join(", ");
       const sub = [place, c.power_kw ? c.power_kw + " kW" : "", fmtDate(c.created_at)].filter(Boolean).join(" · ");
       return `
@@ -587,8 +635,9 @@ async function loadModeration() {
             <span class="sub">${esc(sub)}</span>
           </div>
           <div class="quick">
-            <button class="approve" onclick="event.stopPropagation(); moderate('charger', ${c.id}, 'approve')">Approve</button>
-            <button class="reject" onclick="event.stopPropagation(); moderate('charger', ${c.id}, 'reject')">Reject</button>
+            <button class="neutral" onclick="event.stopPropagation(); editCharger('mod', '${c.id}')">Edit</button>
+            <button class="approve" onclick="event.stopPropagation(); moderate('charger', '${c.id}', 'approve')">Approve</button>
+            <button class="reject" onclick="event.stopPropagation(); moderate('charger', '${c.id}', 'reject')">Reject</button>
           </div>
         </div>
         <div class="details">
@@ -598,8 +647,7 @@ async function loadModeration() {
       </div>`;
     }).join("") : '<div class="empty">No pending chargers</div>';
 
-    html += '<h2 class="section">Pending notes</h2>';
-    html += notes?.length ? notes.map(n => `
+    sec.notes = notes?.length ? notes.map(n => `
       <div class="card">
         <div class="summary" onclick="toggleCard(this)">
           <span class="chev">▶</span>
@@ -608,8 +656,9 @@ async function loadModeration() {
             <span class="sub">${fmtDate(n.created_at)}</span>
           </div>
           <div class="quick">
-            <button class="approve" onclick="event.stopPropagation(); moderate('note', ${n.id}, 'approve')">Approve</button>
-            <button class="reject" onclick="event.stopPropagation(); moderate('note', ${n.id}, 'reject')">Reject</button>
+            <button class="neutral" onclick="event.stopPropagation(); editNote('mod', '${n.id}')">Edit</button>
+            <button class="approve" onclick="event.stopPropagation(); moderate('note', '${n.id}', 'approve')">Approve</button>
+            <button class="reject" onclick="event.stopPropagation(); moderate('note', '${n.id}', 'reject')">Reject</button>
           </div>
         </div>
         <div class="details">
@@ -619,27 +668,117 @@ async function loadModeration() {
         </div>
       </div>`).join("") : '<div class="empty">No pending notes</div>';
 
-    html += '<h2 class="section">Content reports</h2>';
-    html += reports?.length ? reports.map(r => `
+    window._reports = reports ?? [];
+    sec.reports = reports?.length ? reports.map(r => {
+      const isCharger = r.kind === "charger" && r.charger_id != null;
+      const reasonLabel = REPORT_REASON_LABELS[r.reason] || r.reason || "";
+      return `
       <div class="card">
         <div class="summary" onclick="toggleCard(this)">
           <span class="chev">▶</span>
           <div class="grow">
-            <h3>${esc(r.subject ?? "Report #" + r.id)}</h3>
-            <span class="sub">${esc(r.kind ?? "")} · ${fmtDate(r.created_at)}</span>
+            <h3>${esc(r.charger_title || r.subject || "Report #" + r.id)} ${r.status ? `<span class="pill ${esc(r.status)}">${esc(r.status)}</span>` : ""}</h3>
+            <span class="sub">${esc(reasonLabel || r.kind || "")}${r.charger_source ? " · " + esc(r.charger_source) : ""} · ${fmtDate(r.created_at)}</span>
           </div>
           <div class="quick">
-            <button class="delete" onclick="event.stopPropagation(); deleteReport(${r.id})">Dismiss</button>
+            <button class="neutral" onclick="event.stopPropagation(); resolveReport('${r.id}', 'dismissed')">Dismiss</button>
           </div>
         </div>
         <div class="details">
-          <div class="body">${esc(r.detail ?? "")}</div>
-          ${kvBlock(r, ["id", "subject", "kind", "created_at", "detail"])}
+          ${r.charger_address ? `<div class="meta">${esc(r.charger_address)}</div>` : ""}
+          ${r.detail ? `<div class="body">${esc(r.detail)}</div>` : ""}
+          ${kvBlock(r, ["id", "kind", "reason", "charger_id", "charger_source", "status", "created_at"])}
+          ${isCharger ? `
+          <div class="quick" style="margin-top:10px;flex-wrap:wrap">
+            <button class="neutral" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'mark_possibly_unavailable')">Mark possibly unavailable</button>
+            <button class="neutral" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'mark_temporarily_offline')">Mark temporarily offline</button>
+            <button class="neutral" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'mark_possibly_removed')">Mark possibly removed</button>
+            <button class="reject" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'hide')">Hide charger</button>
+            <button class="approve" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'restore')">Restore charger</button>
+            <button class="neutral" onclick="resolveReport('${r.id}', 'resolved')">Resolve (no charger change)</button>
+          </div>` : ""}
         </div>
-      </div>`).join("") : '<div class="empty">No reports</div>';
+      </div>`;
+    }).join("") : '<div class="empty">No reports</div>';
 
-    el.innerHTML = html;
+    sec.rates = rates?.length ? rates.map(r => {
+      const priceLabel = "$" + Number(r.price_per_kwh).toFixed(2) + "/kWh" + (r.time_period ? " · " + esc(r.time_period) : "");
+      return `
+      <div class="card">
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>Charger #${r.charger_id} (${esc(r.charger_source)}) — ${priceLabel}</h3>
+            <span class="sub">${esc(r.rate_type)} · ${fmtDate(r.created_at)}</span>
+          </div>
+          <div class="quick">
+            <button class="approve" onclick="event.stopPropagation(); moderateRate('${r.id}', 'approve')">Approve</button>
+            <button class="reject" onclick="event.stopPropagation(); moderateRate('${r.id}', 'reject')">Reject</button>
+          </div>
+        </div>
+        <div class="details">
+          ${kvBlock(r, ["id", "charger_source", "charger_id", "rate_type", "price_per_kwh", "time_period", "status", "created_at"])}
+        </div>
+      </div>`;
+    }).join("") : '<div class="empty">No pending rate reports</div>';
+
+    sec.suggestions = suggestions?.length ? suggestions.map(s => `
+      <div class="card">
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>Charger #${s.charger_id} (${esc(s.charger_source)}) — ${esc(EDIT_FIELD_LABELS[s.field] || s.field)}</h3>
+            <span class="sub">${esc(s.suggested_value)} · ${fmtDate(s.created_at)}</span>
+          </div>
+          <div class="quick">
+            <button class="approve" onclick="event.stopPropagation(); moderateEditSuggestion('${s.id}', 'approve')">Approve</button>
+            <button class="reject" onclick="event.stopPropagation(); moderateEditSuggestion('${s.id}', 'reject')">Reject</button>
+          </div>
+        </div>
+        <div class="details">
+          ${s.charger_source === "community" && !["connector_type", "power_kw", "operator_name"].includes(s.field)
+            ? `<div class="body">Community charger — approving this won't auto-patch the listing (no direct column for "${esc(EDIT_FIELD_LABELS[s.field] || s.field)}"). Use Content → edit the charger manually after approving.</div>`
+            : ""}
+          ${kvBlock(s, ["id", "charger_source", "charger_id", "field", "suggested_value", "status", "created_at"])}
+        </div>
+      </div>`).join("") : '<div class="empty">No pending edit suggestions</div>';
+
+    window._modSections = sec;
+    // Default to the first non-empty queue so whatever needs attention is
+    // what's on screen after a refresh, instead of always landing on
+    // Chargers even when that queue happens to be empty.
+    if (!window._modActiveTab || window._modCounts[window._modActiveTab] === undefined) {
+      window._modActiveTab = MOD_SECTIONS.find(s => window._modCounts[s.key] > 0)?.key ?? "chargers";
+    }
+    renderModeration();
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+
+function renderModeration() {
+  const el = document.getElementById("tab-moderation");
+  const c = window._modCounts;
+  const active = window._modActiveTab;
+  const html = `
+    <div class="stats">
+      ${MOD_SECTIONS.map(s => `
+        <div class="stat click ${active === s.key ? "sel" : ""}" onclick="showModSection('${s.key}')">
+          <div class="n">${c[s.key]}</div><div class="l">${esc(s.label)}</div>
+        </div>`).join("")}
+    </div>
+    <div class="modnav">
+      ${MOD_SECTIONS.map(s => `
+        <button class="${active === s.key ? "active" : ""}" onclick="showModSection('${s.key}')">
+          ${esc(s.label)}${c[s.key] ? ` <span class="badge">${c[s.key]}</span>` : ""}
+        </button>`).join("")}
+    </div>
+    ${window._modSections[active]}
+  `;
+  el.innerHTML = html;
+}
+
+function showModSection(key) {
+  window._modActiveTab = key;
+  renderModeration();
 }
 async function moderate(type, id, decision) {
   try {
@@ -648,11 +787,121 @@ async function moderate(type, id, decision) {
     loadModeration();
   } catch (e) { toast("Failed: " + e.message); }
 }
+async function moderateRate(id, decision) {
+  try {
+    await api("moderateRate", { id, decision });
+    toast(decision === "approve" ? "Rate approved ✓" : "Rate rejected");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+async function moderateEditSuggestion(id, decision) {
+  try {
+    const { patchedCommunityCharger } = await api("moderateEditSuggestion", { id, decision });
+    toast(decision === "reject" ? "Suggestion rejected" : patchedCommunityCharger ? "Approved and charger updated ✓" : "Approved ✓");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+function editNote(scope, id) {
+  const list = scope === "mod" ? window._modNotes : window._contentNotes;
+  const n = list?.find(x => String(x.id) === String(id));
+  if (!n) return;
+  const text = prompt("Edit note text (max 200 chars):", n.text ?? "");
+  if (text === null) return;
+  api("editContent", { type: "note", id, fields: { text: text.trim().slice(0, 200) } })
+    .then(() => { toast("Note updated"); scope === "mod" ? loadModeration() : loadContent(); })
+    .catch(e => toast("Failed: " + e.message));
+}
+function editCharger(scope, id) {
+  const list = scope === "mod" ? window._modChargers : window._contentChargers;
+  const c = list?.find(x => String(x.id) === String(id));
+  if (!c) return;
+  const card = event.target.closest(".card");
+  const details = card.querySelector(".details");
+  details.innerHTML = `
+    <div class="editform">
+      <div><label>Title</label><input id="ef_title" value="${esc(c.title ?? "")}"></div>
+      <div><label>Address</label><input id="ef_address" value="${esc(c.address_line1 ?? "")}"></div>
+      <div><label>Town</label><input id="ef_town" value="${esc(c.town ?? "")}"></div>
+      <div><label>State</label><input id="ef_state" value="${esc(c.state_or_province ?? "")}"></div>
+      <div><label>Postcode</label><input id="ef_postcode" value="${esc(c.postcode ?? "")}"></div>
+      <div><label>Connector type</label><input id="ef_connector" value="${esc(c.connector_type ?? "")}"></div>
+      <div><label>Power (kW)</label><input id="ef_power" value="${c.power_kw ?? ""}"></div>
+      <div><label>Free?</label><select id="ef_free">
+        <option value="true" ${c.is_free ? "selected" : ""}>Yes</option>
+        <option value="false" ${!c.is_free ? "selected" : ""}>No</option>
+      </select></div>
+      <div><label>Cost info</label><input id="ef_cost" value="${esc(c.cost_info ?? "")}"></div>
+      <div><label>Operator</label><input id="ef_operator" value="${esc(c.operator_name ?? "")}"></div>
+      <div class="quick" style="margin-top:6px">
+        <button class="approve" onclick="saveCharger('${scope}', ${id})">Save</button>
+        <button class="neutral" onclick="${scope === "mod" ? "loadModeration()" : "loadContent()"}">Cancel</button>
+      </div>
+    </div>`;
+  card.classList.add("open");
+}
+function saveCharger(scope, id) {
+  const val = sel => document.getElementById(sel).value.trim();
+  const power = val("ef_power");
+  const fields = {
+    title: val("ef_title"),
+    address_line1: val("ef_address") || null,
+    town: val("ef_town") || null,
+    state_or_province: val("ef_state") || null,
+    postcode: val("ef_postcode") || null,
+    connector_type: val("ef_connector") || null,
+    power_kw: power ? Number(power) : null,
+    is_free: document.getElementById("ef_free").value === "true",
+    cost_info: val("ef_cost") || null,
+    operator_name: val("ef_operator") || null,
+  };
+  api("editContent", { type: "charger", id, fields })
+    .then(() => { toast("Charger updated"); scope === "mod" ? loadModeration() : loadContent(); })
+    .catch(e => toast("Failed: " + e.message));
+}
+const REPORT_REASON_LABELS = {
+  offline: "Charger appears offline",
+  removed: "Charger has been removed",
+  incorrect_location: "Incorrect location",
+  incorrect_connector: "Incorrect connector information",
+  incorrect_speed: "Incorrect charging speed",
+  incorrect_access: "Access information is wrong",
+  incorrect_address: "Incorrect address",
+  incorrect_operator: "Incorrect operator",
+  damaged: "Charger is damaged",
+  duplicate: "Duplicate listing",
+  other: "Other",
+};
+
+// Kept for compatibility with anything still pointing at it, but
+// resolveReport (below) is what the UI actually calls now — it preserves
+// the report row (and its moderation history) instead of deleting it.
 async function deleteReport(id) {
-  if (!confirm("Dismiss (delete) this report?")) return;
+  if (!confirm("Permanently delete this report? This can't be undone.")) return;
   try {
     await api("deleteReport", { id });
-    toast("Report dismissed");
+    toast("Report deleted");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+async function resolveReport(id, status) {
+  try {
+    await api("resolveReport", { id, status });
+    toast(status === "dismissed" ? "Report dismissed" : "Report resolved");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+async function moderateChargerFromReport(reportId, chargerId, chargerSource, moderationAction) {
+  let warningDetails = null;
+  if (moderationAction.startsWith("mark_")) {
+    warningDetails = prompt("Optional details to show users with this warning (leave blank for none):", "");
+    if (warningDetails === null) return; // cancelled
+  } else if (moderationAction === "hide" && !confirm("Hide this charger from normal users? It stays in the database and is restorable.")) {
+    return;
+  }
+  try {
+    await api("moderateCharger", { chargerId, chargerSource, moderationAction, warningDetails });
+    await api("resolveReport", { id: reportId, status: "resolved" });
+    toast("Charger updated");
     loadModeration();
   } catch (e) { toast("Failed: " + e.message); }
 }
@@ -691,7 +940,7 @@ function ticketRow(t) {
   const icon = t.category === "bug" ? "🐛" : t.category === "feature" ? "💡" : "💬";
   const sub = [t.name, fmtDate(t.created_at)].filter(Boolean).map(esc).join(" · ");
   return `
-  <div class="card rowlink ${t.id === convoId ? "sel" : ""}" data-tid="${t.id}" style="padding:12px 14px;cursor:pointer" onclick="openConvo(${t.id})">
+  <div class="card rowlink ${String(t.id) === String(convoId) ? "sel" : ""}" data-tid="${t.id}" style="padding:12px 14px;cursor:pointer" onclick="openConvo('${t.id}')">
     <div class="summary">
       <span style="font-size:16px">${icon}</span>
       <div class="grow">
@@ -744,7 +993,7 @@ const TEMPLATES = [
 // ── Full-screen conversation window (the ticket workspace) ───────────
 let convoId = null;
 
-function convoTicket() { return LAST_TICKETS.find(x => x.id === convoId); }
+function convoTicket() { return LAST_TICKETS.find(x => String(x.id) === String(convoId)); }
 
 function applyConvoTemplate(sel) {
   if (sel.value === "" || convoId == null) return;
@@ -780,7 +1029,7 @@ function openConvo(id) {
   document.getElementById("convoDraft").value = "";
   document.getElementById("ticketPane").classList.add("open"); // mobile only
   document.querySelectorAll("#ticketList .card").forEach(c =>
-    c.classList.toggle("sel", Number(c.dataset.tid) === id));
+    c.classList.toggle("sel", String(c.dataset.tid) === String(id)));
   renderConvoHeader();
   loadConvo();
 }
@@ -839,11 +1088,14 @@ async function loadConvo() {
   const el = document.getElementById("convoMsgs");
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const t = LAST_TICKETS.find(x => x.id === convoId);
+    const t = LAST_TICKETS.find(x => String(x.id) === String(convoId));
     const { messages } = await api("ticketThread", { id: convoId });
     let html = "";
     if (t) {
-      html += `<div class="bubble user"><div class="who">${esc(t.name || "User")} · original report · ${fmtDate(t.created_at)}</div>${esc(t.detail)}</div>`;
+      const imageHtml = t.image_url
+        ? `<div style="margin-top:8px"><a href="${esc(t.image_url)}" target="_blank"><img src="${esc(t.image_url)}" style="max-width:240px;max-height:240px;border-radius:8px;display:block"></a></div>`
+        : "";
+      html += `<div class="bubble user"><div class="who">${esc(t.name || "User")} · original report · ${fmtDate(t.created_at)}</div>${esc(t.detail)}${imageHtml}</div>`;
     }
     html += messages.map(m => `
       <div class="bubble ${esc(m.sender)}">
@@ -1002,6 +1254,8 @@ async function loadContent() {
   try {
     const q = document.getElementById("contentQ").value;
     const { notes, chargers } = await api("content", { q });
+    window._contentChargers = chargers ?? [];
+    window._contentNotes = notes ?? [];
     let html = '<h2 class="section" style="margin-top:0">Community chargers</h2>';
     html += chargers?.length ? chargers.map(c => {
       const place = [c.town, c.state_or_province].filter(Boolean).join(", ");
@@ -1015,7 +1269,8 @@ async function loadContent() {
             <span class="sub">${esc(sub)}</span>
           </div>
           <div class="quick">
-            <button class="delete" onclick="event.stopPropagation(); deleteContent('charger', ${c.id})">Delete</button>
+            <button class="neutral" onclick="event.stopPropagation(); editCharger('content', '${c.id}')">Edit</button>
+            <button class="delete" onclick="event.stopPropagation(); deleteContent('charger', '${c.id}')">Delete</button>
           </div>
         </div>
         <div class="details">
@@ -1034,7 +1289,8 @@ async function loadContent() {
             <span class="sub">${fmtDate(n.created_at)}</span>
           </div>
           <div class="quick">
-            <button class="delete" onclick="event.stopPropagation(); deleteContent('note', ${n.id})">Delete</button>
+            <button class="neutral" onclick="event.stopPropagation(); editNote('content', '${n.id}')">Edit</button>
+            <button class="delete" onclick="event.stopPropagation(); deleteContent('note', '${n.id}')">Delete</button>
           </div>
         </div>
         <div class="details">
@@ -1043,14 +1299,59 @@ async function loadContent() {
           ${kvBlock(n, ["id", "text", "created_at", "status"])}
         </div>
       </div>`).join("") : '<div class="empty">No notes</div>';
+
     el.innerHTML = html;
+
+    // Government open-data chargers (our own table — hiding one here takes
+    // effect for every installed app version immediately, since it's
+    // enforced by an RLS policy, not app code). Open Charge Map entries
+    // aren't listed here at all: the app calls OCM directly, so there's
+    // nothing server-side to hide for those. Rendered as its own block
+    // with its own try/catch so a failure here (e.g. the backend action
+    // isn't deployed yet) can't wipe out the community chargers/notes
+    // lists above, which already rendered successfully.
+    try {
+      const { chargers: govChargers } = await api("govChargers", { q });
+      window._govChargers = govChargers ?? [];
+      let govHtml = '<h2 class="section">Government chargers <span class="sub" style="font-weight:400">(hide takes effect instantly, no app update needed)</span></h2>';
+      govHtml += govChargers?.length ? govChargers.map(g => `
+        <div class="card">
+          <div class="summary" onclick="toggleCard(this)">
+            <span class="chev">▶</span>
+            <div class="grow">
+              <h3>${esc(g.station_name || "Unnamed station")} ${g.hidden ? '<span class="pill rejected">Hidden</span>' : ""}</h3>
+              <span class="sub">${esc(g.address ?? "")}</span>
+            </div>
+            <div class="quick">
+              ${g.hidden
+                ? `<button class="approve" onclick="event.stopPropagation(); toggleGovCharger('${g.id}', false)">Unhide</button>`
+                : `<button class="reject" onclick="event.stopPropagation(); toggleGovCharger('${g.id}', true)">Hide</button>`}
+            </div>
+          </div>
+          <div class="details">
+            ${kvBlock(g, ["id", "station_name", "address", "operator", "hidden"])}
+          </div>
+        </div>`).join("") : '<div class="empty">No matching government chargers</div>';
+      el.insertAdjacentHTML("beforeend", govHtml);
+    } catch (e) {
+      el.insertAdjacentHTML("beforeend", `<h2 class="section">Government chargers</h2><div class="empty err">Failed: ${esc(e.message)}</div>`);
+    }
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+async function toggleGovCharger(id, hidden) {
+  try {
+    await api("toggleGovCharger", { id, hidden });
+    toast(hidden ? "Charger hidden" : "Charger unhidden");
+    loadContent();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 async function deleteContent(type, id) {
   if (!confirm(`Permanently delete this ${type}? This can't be undone.`)) return;
-  await api("deleteContent", { type, id });
-  toast("Deleted");
-  loadContent();
+  try {
+    await api("deleteContent", { type, id });
+    toast("Deleted");
+    loadContent();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 
 // ── Auto-refresh + new-ticket notifications ──────────────────────────
