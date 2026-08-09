@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Charge Nomad Admin</title>
+<link rel="icon" type="image/png" href="https://madzzboi.github.io/charge-nomad-confirm/logo.png">
 <style>
   :root {
     --bg: #0A0F0C; --surface: #10160F12; --card: #121815; --elevated: #1A211D;
@@ -73,6 +74,16 @@
   .stat .n { font-size: 28px; font-weight: 800; letter-spacing: -.02em; color: var(--accent); }
   .stat .l { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
   .stat .ic { font-size: 18px; margin-bottom: 6px; }
+
+  .pillrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .pillstat {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px; font-size: 13px; color: var(--text2); cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .pillstat:hover { border-color: var(--border2); background: var(--elevated); }
+  .pillstat b { color: var(--text); font-weight: 700; }
   .stat.click { cursor: pointer; }
   .stat.click:hover { transform: translateY(-2px); }
   .stat.green  { border-top: 3px solid var(--accent); }  .stat.green .n  { color: var(--accent); }
@@ -100,8 +111,7 @@
   .hero { margin: 8px 0 20px; }
   .hero h1 {
     font-size: clamp(24px, 5vw, 32px); font-weight: 800; letter-spacing: -.02em;
-    background: linear-gradient(90deg, var(--accent), var(--blue));
-    -webkit-background-clip: text; background-clip: text; color: transparent;
+    color: var(--text);
   }
   .hero p { color: var(--text3); font-size: 14px; margin-top: 4px; }
 
@@ -315,6 +325,7 @@
   <button data-tab="tickets" onclick="showTab('tickets')">Tickets <span class="badge" id="ticketBadge" style="display:none"></span></button>
   <button data-tab="signups" onclick="showTab('signups')">Signups</button>
   <button data-tab="content" onclick="showTab('content')">Content</button>
+  <button data-tab="history" onclick="showTab('history')">History</button>
   <button data-tab="recovery" onclick="showTab('recovery')">Recovery</button>
 </nav>
 
@@ -354,6 +365,13 @@
       <button onclick="loadContent()">Search</button>
     </div>
     <div id="contentResults"></div>
+  </div>
+  <div id="tab-history" style="display:none">
+    <div class="searchrow">
+      <input type="text" id="historyQ" placeholder="Search history (charger, subject, action…)" oninput="renderHistory()">
+      <button onclick="loadHistory()">↻ Refresh</button>
+    </div>
+    <div id="historyResults"><div class="empty">Loading…</div></div>
   </div>
   <div id="tab-recovery" style="display:none">
     <div class="searchrow">
@@ -437,11 +455,86 @@ document.getElementById("secretInput").addEventListener("keydown", e => { if (e.
 // ── Tabs ──────────────────────────────────────────────────────────────
 function showTab(name) {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.tab === name);
-  for (const id of ["home", "moderation", "tickets", "signups", "content", "recovery"]) {
+  for (const id of ["home", "moderation", "tickets", "signups", "content", "history", "recovery"]) {
     document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
   }
+  if (name === "history") loadHistory();
 }
 function refreshAll() { loadHome(); loadModeration(); loadTickets(); loadSignups(); loadContent(); }
+
+const HISTORY_TABLE_LABELS = {
+  user_submitted_chargers: "Charger",
+  charger_notes: "Note",
+  content_reports: "Report",
+  charger_rates: "Rate report",
+  charger_edit_suggestions: "Edit suggestion",
+  charger_flags: "Charger flag",
+};
+
+async function loadHistory() {
+  const el = document.getElementById("historyResults");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { history } = await api("moderationHistory");
+    window._history = history ?? [];
+    renderHistory();
+  } catch (e) {
+    el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderHistory() {
+  const el = document.getElementById("historyResults");
+  const history = window._history ?? [];
+  const q = (document.getElementById("historyQ")?.value ?? "").trim().toLowerCase();
+  const filtered = !q ? history : history.filter(h => {
+    const label = HISTORY_TABLE_LABELS[h.table_name] || h.table_name;
+    const haystack = [label, h.table_name, h.row_id, h.action, h.previous_status, h.new_status, JSON.stringify(h.snapshot ?? "")]
+      .filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(q);
+  });
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty">${history.length ? "No history matches your search" : "No moderation actions yet"}</div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(h => {
+    const label = HISTORY_TABLE_LABELS[h.table_name] || h.table_name;
+    const canRevert = h.table_name === "charger_flags" || h.previous_status != null;
+    const summary = h.previous_status
+      ? `${esc(h.previous_status)} → ${esc(h.new_status)}`
+      : esc(h.action);
+    return `
+    <div class="card">
+      <div class="summary" onclick="toggleCard(this)">
+        <span class="chev">▶</span>
+        <div class="grow">
+          <h3>${esc(label)} ${esc(summary)}</h3>
+          <span class="sub">${fmtDate(h.created_at)}</span>
+        </div>
+        <div class="quick">
+          ${canRevert ? `<button class="neutral" onclick="event.stopPropagation(); revertHistory('${h.id}')">Revert</button>` : ""}
+        </div>
+      </div>
+      <div class="details">
+        ${kvBlock(h, ["id", "table_name", "row_id", "action", "previous_status", "new_status", "created_at"])}
+        ${h.snapshot ? `<div class="body"><pre style="white-space:pre-wrap;word-break:break-word">${esc(JSON.stringify(h.snapshot, null, 2))}</pre></div>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function revertHistory(id) {
+  if (!confirm("Revert this action? This undoes it and removes it from history.")) return;
+  try {
+    await api("revertModeration", { id });
+    toast("Reverted ✓");
+    loadHistory();
+    loadModeration();
+    loadContent();
+  } catch (e) { toast("Failed: " + e.message); }
+}
 function toggleCard(el) { el.parentElement.classList.toggle("open"); }
 
 // ── Account recovery (2FA lockouts) ─────────────────────────────────────
@@ -534,12 +627,20 @@ async function loadHome() {
   const el = document.getElementById("tab-home");
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const o = await api("overview");
+    const [o, { history }] = await Promise.all([api("overview"), api("moderationHistory")]);
     const h = new Date().getHours();
     const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
     const last7 = o.signups.filter(s => s.created_at && Date.now() - new Date(s.created_at) < 7 * 864e5).length;
     const modCount = o.pendingChargers.count + o.pendingNotes.count + o.pendingRates.count + o.pendingEditSuggestions.count;
     const allClear = o.openTickets.count + modCount + o.reports.count === 0;
+
+    const hist = history ?? [];
+    const isToday = d => new Date(d).toDateString() === new Date().toDateString();
+    const inLast7 = d => Date.now() - new Date(d) < 7 * 864e5;
+    const actionsToday = hist.filter(x => isToday(x.created_at)).length;
+    const week = hist.filter(x => inLast7(x.created_at));
+    const approvedWeek = week.filter(x => x.new_status === "approved").length;
+    const rejectedWeek = week.filter(x => x.new_status === "rejected" || x.new_status === "dismissed").length;
 
     // Just the top 3 most recent things that need action, nothing more.
     const attention = [
@@ -559,6 +660,13 @@ async function loadHome() {
         <div class="stat blue click" onclick="showTab('moderation')"><div class="ic">⚡</div><div class="n">${modCount}</div><div class="l">To moderate</div></div>
         <div class="stat amber click" onclick="showTab('moderation')"><div class="ic">🚩</div><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
         <div class="stat pink click" onclick="showTab('signups')"><div class="ic">🌱</div><div class="n">${last7}</div><div class="l">Signups this week</div></div>
+      </div>
+
+      <div class="pillrow">
+        <div class="pillstat" onclick="showTab('history')">⚡ <b>${actionsToday}</b> today</div>
+        <div class="pillstat" onclick="showTab('history')">✅ <b>${approvedWeek}</b> approved this week</div>
+        <div class="pillstat" onclick="showTab('history')">🚫 <b>${rejectedWeek}</b> rejected/dismissed this week</div>
+        <div class="pillstat" onclick="showTab('history')">📜 <b>${hist.length}</b> logged recently</div>
       </div>
 
       ${attention.length ? `
