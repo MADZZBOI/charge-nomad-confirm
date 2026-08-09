@@ -490,13 +490,13 @@ async function loadGrants() {
           <span class="chev">▶</span>
           <div class="grow">
             <h3>${esc(g.email)}</h3>
-            <span class="sub">${g.note ? esc(g.note) + " · " : ""}${fmtDate(g.created_at)}</span>
+            <span class="sub">${g.note ? esc(g.note) + " · " : ""}${fmtDate(g.granted_at)}</span>
           </div>
           <div class="quick">
-            <button class="reject" onclick="event.stopPropagation(); removeGrant('${g.id}')">Revoke</button>
+            <button class="reject" onclick="event.stopPropagation(); removeGrant('${esc(g.email)}')">Revoke</button>
           </div>
         </div>
-        <div class="details">${kvBlock(g, ["id", "email", "note", "created_at"])}</div>
+        <div class="details">${kvBlock(g, ["email", "note", "granted_at"])}</div>
       </div>`).join("");
   } catch (e) {
     el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`;
@@ -516,10 +516,10 @@ async function addGrant() {
   } catch (e) { toast("Failed: " + e.message); }
 }
 
-async function removeGrant(id) {
+async function removeGrant(email) {
   if (!confirm("Revoke Plus access for this account?")) return;
   try {
-    await api("removeGrant", { id });
+    await api("removeGrant", { email });
     toast("Revoked");
     loadGrants();
   } catch (e) { toast("Failed: " + e.message); }
