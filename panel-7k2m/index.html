@@ -325,6 +325,7 @@
   <button data-tab="tickets" onclick="showTab('tickets')">Tickets <span class="badge" id="ticketBadge" style="display:none"></span></button>
   <button data-tab="signups" onclick="showTab('signups')">Signups</button>
   <button data-tab="content" onclick="showTab('content')">Content</button>
+  <button data-tab="grants" onclick="showTab('grants')">Grants</button>
   <button data-tab="history" onclick="showTab('history')">History</button>
   <button data-tab="recovery" onclick="showTab('recovery')">Recovery</button>
 </nav>
@@ -365,6 +366,17 @@
       <button onclick="loadContent()">Search</button>
     </div>
     <div id="contentResults"></div>
+  </div>
+  <div id="tab-grants" style="display:none">
+    <p style="color:#9BA69F;font-size:13px;margin:0 0 16px">
+      Manually unlock Charge Nomad+ for an account (press, testers, comped users) with no purchase required. Matched by account email.
+    </p>
+    <div class="searchrow">
+      <input type="text" id="grantEmail" placeholder="Email to grant Plus to…" onkeydown="if(event.key==='Enter')document.getElementById('grantNote').focus()">
+      <input type="text" id="grantNote" placeholder="Note (optional, e.g. why)" style="flex:1" onkeydown="if(event.key==='Enter')addGrant()">
+      <button onclick="addGrant()">Grant Plus</button>
+    </div>
+    <div id="grantsResults"><div class="empty">Loading…</div></div>
   </div>
   <div id="tab-history" style="display:none">
     <div class="searchrow">
@@ -455,10 +467,62 @@ document.getElementById("secretInput").addEventListener("keydown", e => { if (e.
 // ── Tabs ──────────────────────────────────────────────────────────────
 function showTab(name) {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.tab === name);
-  for (const id of ["home", "moderation", "tickets", "signups", "content", "history", "recovery"]) {
+  for (const id of ["home", "moderation", "tickets", "signups", "content", "grants", "history", "recovery"]) {
     document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
   }
   if (name === "history") loadHistory();
+  if (name === "grants") loadGrants();
+}
+
+// ── Charge Plus manual grants ────────────────────────────────────────
+async function loadGrants() {
+  const el = document.getElementById("grantsResults");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { grants } = await api("grants");
+    if (!grants?.length) {
+      el.innerHTML = '<div class="empty">No manual grants yet</div>';
+      return;
+    }
+    el.innerHTML = grants.map(g => `
+      <div class="card">
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(g.email)}</h3>
+            <span class="sub">${g.note ? esc(g.note) + " · " : ""}${fmtDate(g.created_at)}</span>
+          </div>
+          <div class="quick">
+            <button class="reject" onclick="event.stopPropagation(); removeGrant('${g.id}')">Revoke</button>
+          </div>
+        </div>
+        <div class="details">${kvBlock(g, ["id", "email", "note", "created_at"])}</div>
+      </div>`).join("");
+  } catch (e) {
+    el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+async function addGrant() {
+  const email = document.getElementById("grantEmail").value.trim();
+  const note = document.getElementById("grantNote").value.trim();
+  if (!email) return;
+  try {
+    await api("addGrant", { email, note: note || undefined });
+    document.getElementById("grantEmail").value = "";
+    document.getElementById("grantNote").value = "";
+    toast("Plus granted ✓");
+    loadGrants();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+async function removeGrant(id) {
+  if (!confirm("Revoke Plus access for this account?")) return;
+  try {
+    await api("removeGrant", { id });
+    toast("Revoked");
+    loadGrants();
+  } catch (e) { toast("Failed: " + e.message); }
 }
 function refreshAll() { loadHome(); loadModeration(); loadTickets(); loadSignups(); loadContent(); }
 
@@ -469,6 +533,7 @@ const HISTORY_TABLE_LABELS = {
   charger_rates: "Rate report",
   charger_edit_suggestions: "Edit suggestion",
   charger_flags: "Charger flag",
+  plus_grants: "Plus grant",
 };
 
 async function loadHistory() {
@@ -501,9 +566,9 @@ function renderHistory() {
 
   el.innerHTML = filtered.map(h => {
     const label = HISTORY_TABLE_LABELS[h.table_name] || h.table_name;
-    const canRevert = h.table_name === "charger_flags" || h.previous_status != null;
+    const canRevert = h.table_name === "charger_flags" || h.table_name === "plus_grants" || h.previous_status != null;
     const summary = h.previous_status
-      ? `${esc(h.previous_status)} → ${esc(h.new_status)}`
+      ? `${esc(h.previous_status)} → ${esc(h.new_status ?? "removed")}`
       : esc(h.action);
     return `
     <div class="card">
