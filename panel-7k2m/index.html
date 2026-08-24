@@ -115,6 +115,7 @@
   .stat.blue   { border-top: 3px solid var(--blue); }    .stat.blue .n   { color: var(--blue); }
   .stat.amber  { border-top: 3px solid var(--warn); }    .stat.amber .n  { color: var(--warn); }
   .stat.pink   { border-top: 3px solid var(--pink); }    .stat.pink .n   { color: var(--pink); }
+  .stat.danger { border-top: 3px solid var(--danger); }  .stat.danger .n { color: var(--danger); }
   .stat.sel    { border-color: rgba(61,220,132,.5); background: linear-gradient(160deg, var(--accent-dim), var(--card)); }
 
   /* ── Moderation sub-nav ─────────────────────────────── */
@@ -1011,15 +1012,15 @@ async function loadHome() {
       </div>
 
       <div class="stats homeStats" style="flex-shrink:0">
-        <div class="stat green click" onclick="showTab('tickets')"><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
-        <div class="stat blue click" onclick="showTab('moderation')"><div class="n">${modCount}</div><div class="l">To moderate</div></div>
+        <div class="stat amber click" onclick="showTab('tickets')"><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
+        <div class="stat amber click" onclick="showTab('moderation')"><div class="n">${modCount}</div><div class="l">To moderate</div></div>
         <div class="stat amber click" onclick="showTab('moderation')"><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
-        ${oldest ? `<div class="stat ${oldestDays >= 3 ? "amber" : "green"} click" onclick="showTab('tickets')" title="${esc(oldest.subject)}"><div class="n">${oldestDays}d</div><div class="l">Oldest open ticket</div></div>` : ""}
+        ${oldest ? `<div class="stat amber click" onclick="showTab('tickets')" title="${esc(oldest.subject)}"><div class="n">${oldestDays}d</div><div class="l">Oldest open ticket</div></div>` : ""}
         <div class="stat pink click" onclick="showTab('signups')"><div class="n">${last7}</div><div class="l">New signups this week</div></div>
-        <div class="stat click" onclick="showTab('history')"><div class="n">${actionsToday}</div><div class="l">Actions today</div></div>
+        <div class="stat blue click" onclick="showTab('history')"><div class="n">${actionsToday}</div><div class="l">Actions today</div></div>
         <div class="stat green click" onclick="showTab('history')"><div class="n">${approvedWeek}</div><div class="l">Approved this week</div></div>
-        <div class="stat amber click" onclick="showTab('history')"><div class="n">${rejectedWeek}</div><div class="l">Rejected this week</div></div>
-        <div class="stat click" onclick="showTab('history')"><div class="n">${hist.length}</div><div class="l">Logged recently</div></div>
+        <div class="stat danger click" onclick="showTab('history')"><div class="n">${rejectedWeek}</div><div class="l">Rejected this week</div></div>
+        <div class="stat blue click" onclick="showTab('history')"><div class="n">${hist.length}</div><div class="l">Logged recently</div></div>
       </div>
 
       <div class="dash-row">
