@@ -160,8 +160,13 @@
     .split { display: block; }
     .ticket-left { width: 100%; }
     .ticket-list { max-height: none; }
-    .ticket-pane { display: none; position: fixed; inset: 0; z-index: 9; height: auto; border-radius: 0; border: none; }
-    .ticket-pane.open { display: flex; padding-bottom: env(safe-area-inset-bottom); }
+    .ticket-pane {
+      display: none; position: fixed; inset: 0; z-index: 9;
+      height: 100vh; height: 100dvh; border-radius: 0; border: none;
+    }
+    .ticket-pane.open { display: flex; flex-direction: column; }
+    .convo-msgs { min-height: 0; }
+    .convo-compose { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
     .convo-head .back { display: inline-block; }
   }
 
