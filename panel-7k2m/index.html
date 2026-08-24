@@ -1312,17 +1312,11 @@ function renderModeration() {
   const c = window._modCounts;
   const active = window._modActiveTab;
   const html = `
-    <div class="stats modStats">
+    <div class="stats modStats" style="margin-bottom:20px">
       ${MOD_SECTIONS.map(s => `
         <div class="stat click ${active === s.key ? "sel" : ""}" onclick="showModSection('${s.key}')">
           <div class="n">${c[s.key]}</div><div class="l">${esc(s.label)}</div>
         </div>`).join("")}
-    </div>
-    <div class="modnav">
-      ${MOD_SECTIONS.map(s => `
-        <button class="${active === s.key ? "active" : ""}" onclick="showModSection('${s.key}')">
-          ${esc(s.label)}${c[s.key] ? ` <span class="badge">${c[s.key]}</span>` : ""}
-        </button>`).join("")}
     </div>
     ${window._modSections[active]}
   `;
