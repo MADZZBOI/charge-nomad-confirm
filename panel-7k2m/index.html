@@ -73,6 +73,16 @@
 
   /* ── Stats ──────────────────────────────────────────── */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 200px)); justify-content: start; gap: 12px; margin-bottom: 20px; }
+  /* Home's 8-tile grid: a fixed 4 columns divides evenly (4+4) instead of
+     auto-fit wrapping to whatever fits the container width (was 5+3,
+     leaving stragglers alone in the second row). */
+  .homeStats { grid-template-columns: repeat(4, minmax(150px, 1fr)); justify-content: stretch; }
+  /* Moderation's 6-tile grid: fixed 3 columns divides evenly (3+3) instead
+     of auto-fit's 5+1 leaving the last tile alone on its own row. */
+  .modStats { grid-template-columns: repeat(3, minmax(150px, 1fr)); justify-content: stretch; }
+  @media (max-width: 700px) {
+    .homeStats, .modStats { grid-template-columns: repeat(2, minmax(150px, 1fr)); }
+  }
   .stat {
     background: linear-gradient(160deg, var(--elevated), var(--card));
     border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px;
@@ -1000,7 +1010,7 @@ async function loadHome() {
         <p>${allClear ? "All clear. Charge Nomad is humming along nicely." : "A few things could use your eyes today."}</p>
       </div>
 
-      <div class="stats" style="flex-shrink:0">
+      <div class="stats homeStats" style="flex-shrink:0">
         <div class="stat green click" onclick="showTab('tickets')"><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
         <div class="stat blue click" onclick="showTab('moderation')"><div class="n">${modCount}</div><div class="l">To moderate</div></div>
         <div class="stat amber click" onclick="showTab('moderation')"><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
@@ -1301,7 +1311,7 @@ function renderModeration() {
   const c = window._modCounts;
   const active = window._modActiveTab;
   const html = `
-    <div class="stats">
+    <div class="stats modStats">
       ${MOD_SECTIONS.map(s => `
         <div class="stat click ${active === s.key ? "sel" : ""}" onclick="showModSection('${s.key}')">
           <div class="n">${c[s.key]}</div><div class="l">${esc(s.label)}</div>
