@@ -69,6 +69,7 @@
   }
 
   main { padding: 20px clamp(16px, 4vw, 28px) calc(80px + env(safe-area-inset-bottom)); max-width: min(1180px, 92vw); margin: 0 auto; }
+  main.locked { padding-bottom: max(12px, env(safe-area-inset-bottom)); overflow: hidden; }
 
   /* ── Stats ──────────────────────────────────────────── */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 200px)); justify-content: start; gap: 12px; margin-bottom: 20px; }
@@ -130,7 +131,7 @@
   .hero p { color: var(--text3); font-size: 14px; margin-top: 4px; }
 
   /* Home dashboard: one screen, nothing scrolls except the two lower panes */
-  #tab-home { display: flex; flex-direction: column; height: calc(100vh - var(--chrome-h, 140px)); overflow: hidden; }
+  #tab-home { display: flex; flex-direction: column; height: var(--panel-h, calc(100vh - 140px)); overflow: hidden; }
   .dash-row { flex: 1; min-height: 0; display: flex; gap: 16px; margin-top: 14px; }
   .dash-col { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .dash-col.wide { flex: 1.3; }
@@ -144,7 +145,7 @@
   }
 
   /* Split-view ticket workspace */
-  #tab-tickets { display: flex; flex-direction: column; height: calc(100vh - var(--chrome-h, 140px)); overflow: hidden; }
+  #tab-tickets { display: flex; flex-direction: column; height: var(--panel-h, calc(100vh - 140px)); overflow: hidden; }
   #ticketStats { flex-shrink: 0; }
   .split { display: flex; gap: 16px; align-items: stretch; flex: 1; min-height: 0; }
   .ticket-left { width: clamp(300px, 26vw, 440px); flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
@@ -414,7 +415,7 @@
   <button data-tab="recovery" onclick="showTab('recovery')">Recovery</button>
 </nav>
 
-<main>
+<main class="locked">
   <div id="tab-home"></div>
   <div id="tab-moderation" style="display:none"></div>
   <div id="tab-tickets" style="display:none">
@@ -593,11 +594,18 @@ document.getElementById("secretInput").addEventListener("keydown", e => { if (e.
 // exactly the remaining viewport with no scroll, regardless of how tall the
 // header/nav actually render (font metrics, wrapped buttons, browser chrome).
 function updateChromeHeight() {
-  const header = document.querySelector("header");
-  const nav = document.querySelector("nav");
-  if (!header || !nav) return;
-  const h = header.offsetHeight + nav.offsetHeight;
-  document.documentElement.style.setProperty("--chrome-h", h + "px");
+  const main = document.querySelector("main");
+  if (!main) return;
+  // main's own top padding was being missed before (only header+nav were
+  // measured), which is exactly why the fixed-height tabs kept overflowing
+  // by ~20px+ no matter how precisely header/nav were measured. Reading the
+  // element's real position on screen sidesteps that -- it already reflects
+  // header height, nav height, and main's top padding all at once.
+  const padTop = parseFloat(getComputedStyle(main).paddingTop) || 0;
+  const top = main.getBoundingClientRect().top + padTop;
+  const bottomGap = 16;
+  const h = Math.max(200, window.innerHeight - top - bottomGap);
+  document.documentElement.style.setProperty("--panel-h", h + "px");
 }
 window.addEventListener("resize", updateChromeHeight);
 window.addEventListener("load", updateChromeHeight);
@@ -611,6 +619,11 @@ function showTab(name) {
   for (const id of ["home", "moderation", "tickets", "signups", "content", "grants", "partners", "broadcast", "history", "recovery"]) {
     document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
   }
+  // Home/Tickets manage their own fixed-height, non-scrolling layout --
+  // main's normal bottom padding (generous, meant for scrolling pages)
+  // would otherwise add extra height past the viewport for these two.
+  document.querySelector("main").classList.toggle("locked", name === "home" || name === "tickets");
+  updateChromeHeight();
   if (name === "history") loadHistory();
   if (name === "grants") loadGrants();
   if (name === "partners") loadPartners();
