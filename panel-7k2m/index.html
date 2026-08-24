@@ -169,15 +169,19 @@
     max-width: 680px; margin: 0 auto; width: 100%;
   }
   .convo-actions {
-    display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
     padding: 10px 16px; border-bottom: 1px solid var(--border);
     background: var(--surface);
   }
-  .convo-actions input { width: auto; max-width: 220px; }
+  .convo-actions-inner { max-width: 680px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+  .convo-actions-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .convo-actions-row.buttons { justify-content: flex-end; }
+  .convo-actions input { width: auto; flex: 1; min-width: 160px; max-width: 320px; }
   .convo-compose {
     display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; flex-shrink: 0;
     border-top: 1px solid var(--border); background: var(--surface);
   }
+  .convo-compose-inner { max-width: 680px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 8px; }
   .convo-compose .compose-tools { display: flex; gap: 8px; }
   .convo-compose .compose-tools .tpl { flex: 1; }
   .convo-compose textarea {
@@ -208,7 +212,7 @@
       gap: 6px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     }
     .convo-compose textarea { height: 70px; min-height: 44px; }
-    .convo-compose > .sub { display: none; }
+    .convo-compose-inner > .sub { display: none; }
     .convo-head .back { display: inline-block; }
   }
 
@@ -436,14 +440,16 @@
         <div class="convo-actions" id="convoActions"></div>
         <div class="convo-msgs" id="convoMsgs"><div class="empty">Select a ticket on the left to read and reply</div></div>
         <div class="convo-compose">
-          <textarea id="convoDraft" rows="7" placeholder="Type your reply…"></textarea>
-          <div class="compose-tools">
-            <select class="tpl" id="convoTpl" onchange="applyConvoTemplate(this)">
-              <option value="">Templates…</option>
-            </select>
-            <button class="send" onclick="sendConvo()">Send</button>
+          <div class="convo-compose-inner">
+            <textarea id="convoDraft" rows="7" placeholder="Type your reply…"></textarea>
+            <div class="compose-tools">
+              <select class="tpl" id="convoTpl" onchange="applyConvoTemplate(this)">
+                <option value="">Templates…</option>
+              </select>
+              <button class="send" onclick="sendConvo()">Send</button>
+            </div>
+            <span class="sub" style="font-size:11px">⌘/Ctrl+Enter to send · j/k in the list to move between tickets</span>
           </div>
-          <span class="sub" style="font-size:11px">⌘/Ctrl+Enter to send · j/k in the list to move between tickets</span>
         </div>
       </div>
     </div>
@@ -1760,14 +1766,19 @@ function renderConvoHeader() {
   const actions = document.getElementById("convoActions");
   if (!t) { actions.innerHTML = ""; return; }
   actions.innerHTML = `
-    <span class="sub" style="color:var(--text3);font-size:12px">${t.category === "bug" ? "Bug" : t.category === "feature" ? "Feature idea" : "Other"} · #${t.id}${t.platform ? " · " + esc(t.platform) : ""}${t.email ? " · " + esc(t.email) : ""}${t.app_version ? " · v" + esc(t.app_version) : ""}</span>
-    <span style="flex:1"></span>
-    <input type="text" id="convoNote" placeholder="Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="max-width:280px" onchange="saveConvoNote()">
-    ${t.status === "open" ? `<button class="neutral" onclick="setConvoStatus('in_progress')">Mark in progress</button>` : ""}
-    ${t.status !== "closed"
-      ? `<button class="approve" onclick="resolveConvo()">Resolve${t.email ? " &amp; email" : ""}</button>`
-      : `<button class="neutral" onclick="setConvoStatus('open')">Reopen</button>`}
-    <button class="delete" onclick="deleteConvoTicket()">Delete</button>`;
+    <div class="convo-actions-inner">
+      <div class="convo-actions-row">
+        <span class="sub" style="color:var(--text3);font-size:12px">${t.category === "bug" ? "Bug" : t.category === "feature" ? "Feature idea" : "Other"} · #${t.id}${t.platform ? " · " + esc(t.platform) : ""}${t.email ? " · " + esc(t.email) : ""}${t.app_version ? " · v" + esc(t.app_version) : ""}</span>
+      </div>
+      <div class="convo-actions-row buttons">
+        <input type="text" id="convoNote" placeholder="Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" onchange="saveConvoNote()">
+        ${t.status === "open" ? `<button class="neutral" onclick="setConvoStatus('in_progress')">Mark in progress</button>` : ""}
+        ${t.status !== "closed"
+          ? `<button class="approve" onclick="resolveConvo()">Resolve${t.email ? " &amp; email" : ""}</button>`
+          : `<button class="neutral" onclick="setConvoStatus('open')">Reopen</button>`}
+        <button class="delete" onclick="deleteConvoTicket()">Delete</button>
+      </div>
+    </div>`;
 }
 
 function openConvo(id) {
