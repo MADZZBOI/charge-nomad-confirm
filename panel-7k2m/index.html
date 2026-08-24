@@ -81,6 +81,14 @@
   .stat .l { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
   .stat .ic { font-size: 18px; margin-bottom: 6px; }
 
+  .ticketMetaLine {
+    color: var(--text3); font-size: 12px; margin: -4px 0 14px;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .ticketMetaLine .dot { opacity: .5; }
+  .ticketMetaLine a { color: var(--text2); cursor: pointer; text-decoration: none; }
+  .ticketMetaLine a:hover { color: var(--accent); text-decoration: underline; }
+
   .pillrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
   .pillstat {
     display: flex; align-items: center; gap: 6px;
@@ -1616,13 +1624,10 @@ async function loadTickets() {
         <div class="stat blue"><div class="n">${inProgress.length}</div><div class="l">In progress</div></div>
         <div class="stat amber"><div class="n">${closed.length}</div><div class="l">Resolved</div></div>
       </div>
-      <div class="pillrow" style="margin:-4px 0 10px">
-        <div class="pillstat">🍎 <b>${iosOpen}</b> open on iOS</div>
-        <div class="pillstat">🤖 <b>${androidOpen}</b> open on Android</div>
-        ${unknownOpen ? `<div class="pillstat">❔ <b>${unknownOpen}</b> unknown platform</div>` : ""}
-      </div>
-      <div class="actions" style="margin:-8px 0 14px">
-        <button class="neutral" onclick="downloadTicketsCSV()">⬇️ Download tickets CSV</button>
+      <div class="ticketMetaLine">
+        🍎 ${iosOpen} iOS · 🤖 ${androidOpen} Android${unknownOpen ? ` · ❔ ${unknownOpen} unknown` : ""} open
+        <span class="dot">·</span>
+        <a onclick="downloadTicketsCSV()">⬇ Export CSV</a>
       </div>`;
     renderTicketList();
   } catch (e) { list.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
