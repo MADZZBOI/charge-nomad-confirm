@@ -152,7 +152,7 @@
   .ticket-list .card { margin-bottom: 8px; }
   .card.sel { border-color: rgba(61,220,132,.5); background: linear-gradient(160deg, var(--accent-dim), var(--card)); }
   .ticket-pane {
-    flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-y: auto;
+    flex: 1; min-width: 0; max-width: 760px; display: flex; flex-direction: column; overflow-y: auto;
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
     height: 100%;
   }
@@ -196,7 +196,7 @@
     .ticket-left { width: 100%; height: auto; }
     .ticket-list { max-height: none; }
     .ticket-pane {
-      display: none; position: fixed; inset: 0; z-index: 9;
+      display: none; position: fixed; inset: 0; z-index: 9; max-width: none;
       height: 100vh; height: 100dvh; border-radius: 0; border: none;
     }
     .ticket-pane.open { display: flex; flex-direction: column; }
