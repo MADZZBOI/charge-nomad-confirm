@@ -2,10 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CN Admin">
+<meta name="theme-color" content="#0A0F0C">
 <title>Charge Nomad Admin</title>
 <link rel="icon" type="image/png" href="https://madzzboi.github.io/charge-nomad-confirm/logo.png">
+<link rel="apple-touch-icon" href="https://madzzboi.github.io/charge-nomad-confirm/logo.png">
 <style>
   :root {
     --bg: #0A0F0C; --surface: #10160F12; --card: #121815; --elevated: #1A211D;
@@ -33,14 +39,14 @@
 
   /* ── Header ─────────────────────────────────────────── */
   header {
-    display: flex; align-items: center; gap: 12px;
-    padding: 14px clamp(16px, 4vw, 28px);
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: calc(14px + env(safe-area-inset-top)) clamp(16px, 4vw, 28px) 14px;
     background: rgba(10,15,12,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     position: sticky; top: 0; z-index: 5;
   }
-  header img { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
-  header h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+  header img { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.4); flex-shrink: 0; }
+  header h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
   header h1 span { color: var(--accent); }
   header .spacer { flex: 1; }
   #refreshBtn, #logout, #notifyBtn { background: var(--elevated); color: var(--text2); padding: 8px 14px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); }
@@ -49,7 +55,7 @@
   /* ── Nav ────────────────────────────────────────────── */
   nav {
     display: flex; gap: 8px; padding: 16px clamp(16px, 4vw, 28px) 0;
-    max-width: 1040px; margin: 0 auto; flex-wrap: wrap;
+    max-width: min(1440px, 96vw); margin: 0 auto; flex-wrap: wrap;
   }
   nav button {
     background: transparent; color: var(--text3); padding: 9px 18px;
@@ -62,7 +68,7 @@
     padding: 1px 7px; font-size: 11px; font-weight: 700; margin-left: 6px; vertical-align: 1px;
   }
 
-  main { padding: 20px clamp(16px, 4vw, 28px) 80px; max-width: 1040px; margin: 0 auto; }
+  main { padding: 20px clamp(16px, 4vw, 28px) calc(80px + env(safe-area-inset-bottom)); max-width: min(1440px, 96vw); margin: 0 auto; }
 
   /* ── Stats ──────────────────────────────────────────── */
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
@@ -117,14 +123,14 @@
 
   /* Split-view ticket workspace */
   .split { display: flex; gap: 16px; align-items: flex-start; }
-  .ticket-left { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+  .ticket-left { width: clamp(300px, 26vw, 440px); flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
   .ticket-list { max-height: calc(100vh - 320px); overflow-y: auto; padding-right: 4px; }
   .ticket-list .card { margin-bottom: 8px; }
   .card.sel { border-color: rgba(61,220,132,.5); background: linear-gradient(160deg, var(--accent-dim), var(--card)); }
   .ticket-pane {
     flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
     background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    position: sticky; top: 76px; height: calc(100vh - 180px);
+    position: sticky; top: 76px; height: calc(100vh - 130px);
   }
   .convo-head {
     display: flex; align-items: center; gap: 10px; padding: 12px 16px;
@@ -139,10 +145,15 @@
   }
   .convo-actions input { width: auto; }
   .convo-compose {
-    display: flex; gap: 8px; align-items: flex-end; padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 8px; padding: 12px 16px;
     border-top: 1px solid var(--border); background: var(--surface);
   }
-  .convo-compose textarea { flex: 1; resize: vertical; min-height: 42px; }
+  .convo-compose .compose-tools { display: flex; gap: 8px; }
+  .convo-compose .compose-tools .tpl { flex: 1; }
+  .convo-compose textarea {
+    width: 100%; resize: vertical; min-height: 160px;
+    font-size: 14px; line-height: 1.5;
+  }
   .convo-compose .send { background: linear-gradient(135deg, var(--accent), #2BB86A); color: #06130B; padding: 11px 22px; font-weight: 700; }
   .convo-head .back { display: none; }
   @media (max-width: 900px) {
@@ -150,8 +161,28 @@
     .ticket-left { width: 100%; }
     .ticket-list { max-height: none; }
     .ticket-pane { display: none; position: fixed; inset: 0; z-index: 9; height: auto; border-radius: 0; border: none; }
-    .ticket-pane.open { display: flex; }
+    .ticket-pane.open { display: flex; padding-bottom: env(safe-area-inset-bottom); }
     .convo-head .back { display: inline-block; }
+  }
+
+  /* ── Phone-width tightening ─────────────────────────── */
+  @media (max-width: 640px) {
+    #refreshBtn, #logout, #notifyBtn { padding: 8px 11px; font-size: 12px; }
+    nav {
+      flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding-bottom: 6px; scrollbar-width: none;
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav button { flex-shrink: 0; padding: 9px 14px; }
+    .searchrow { flex-wrap: wrap; }
+    .searchrow input { min-width: 0; flex-basis: 100%; }
+    .searchrow button { flex: 1; }
+    .convo-compose .compose-tools { flex-wrap: wrap; }
+    .convo-compose .compose-tools .tpl { flex-basis: 100%; }
+    .convo-compose .send { flex: 1; }
+    .convo-actions input#convoNote { max-width: none !important; flex-basis: 100%; }
+    .card .quick { flex-wrap: wrap; }
+    .approve, .reject, .delete, .neutral { padding: 10px 16px; }
   }
 
   /* ── Cards ──────────────────────────────────────────── */
@@ -326,6 +357,7 @@
   <button data-tab="signups" onclick="showTab('signups')">Signups</button>
   <button data-tab="content" onclick="showTab('content')">Content</button>
   <button data-tab="grants" onclick="showTab('grants')">Grants</button>
+  <button data-tab="partners" onclick="showTab('partners')">Partners</button>
   <button data-tab="history" onclick="showTab('history')">History</button>
   <button data-tab="recovery" onclick="showTab('recovery')">Recovery</button>
 </nav>
@@ -350,11 +382,14 @@
         <div class="convo-actions" id="convoActions"></div>
         <div class="convo-msgs" id="convoMsgs"><div class="empty">Select a ticket on the left to read and reply 👈</div></div>
         <div class="convo-compose">
-          <select class="tpl" id="convoTpl" onchange="applyConvoTemplate(this)">
-            <option value="">📋 Templates…</option>
-          </select>
-          <textarea id="convoDraft" rows="2" placeholder="Type your reply…"></textarea>
-          <button class="send" onclick="sendConvo()">Send</button>
+          <textarea id="convoDraft" rows="7" placeholder="Type your reply…"></textarea>
+          <div class="compose-tools">
+            <select class="tpl" id="convoTpl" onchange="applyConvoTemplate(this)">
+              <option value="">📋 Templates…</option>
+            </select>
+            <button class="send" onclick="sendConvo()">Send</button>
+          </div>
+          <span class="sub" style="font-size:11px">⌘/Ctrl+Enter to send · j/k in the list to move between tickets</span>
         </div>
       </div>
     </div>
@@ -377,6 +412,17 @@
       <button onclick="addGrant()">Grant Plus</button>
     </div>
     <div id="grantsResults"><div class="empty">Loading…</div></div>
+  </div>
+  <div id="tab-partners" style="display:none">
+    <p style="color:#9BA69F;font-size:13px;margin:0 0 16px">
+      "Charge Stop Partners" — businesses near a charger with an offer for Charge Nomad users. No real partner exists yet; nothing here shows in the app until partnersEnabled is turned on in Remote Config AND a partner is created here.
+    </p>
+    <div class="searchrow">
+      <button onclick="showPartnerForm()">+ New partner</button>
+      <button onclick="loadPartners()">↻ Refresh</button>
+    </div>
+    <div id="partnerForm" style="display:none"></div>
+    <div id="partnersResults"><div class="empty">Loading…</div></div>
   </div>
   <div id="tab-history" style="display:none">
     <div class="searchrow">
@@ -467,11 +513,12 @@ document.getElementById("secretInput").addEventListener("keydown", e => { if (e.
 // ── Tabs ──────────────────────────────────────────────────────────────
 function showTab(name) {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.tab === name);
-  for (const id of ["home", "moderation", "tickets", "signups", "content", "grants", "history", "recovery"]) {
+  for (const id of ["home", "moderation", "tickets", "signups", "content", "grants", "partners", "history", "recovery"]) {
     document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
   }
   if (name === "history") loadHistory();
   if (name === "grants") loadGrants();
+  if (name === "partners") loadPartners();
 }
 
 // ── Charge Plus manual grants ────────────────────────────────────────
@@ -524,6 +571,127 @@ async function removeGrant(email) {
     loadGrants();
   } catch (e) { toast("Failed: " + e.message); }
 }
+// ── Charge Stop Partners ─────────────────────────────────────────────
+async function loadPartners() {
+  const el = document.getElementById("partnersResults");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { partners } = await api("partners");
+    window._partners = partners ?? [];
+    if (!partners?.length) {
+      el.innerHTML = '<div class="empty">No partners yet — none have been created.</div>';
+      return;
+    }
+    el.innerHTML = partners.map(p => {
+      const expired = p.valid_until && new Date(p.valid_until) < new Date();
+      const statusPill = !p.approved ? '<span class="pill rejected">Unapproved</span>'
+        : expired ? '<span class="pill closed">Expired</span>'
+        : p.active ? '<span class="pill approved">Live</span>' : '<span class="pill pending">Paused</span>';
+      return `
+      <div class="card">
+        <div class="summary" onclick="toggleCard(this)">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(p.name)} ${statusPill}</h3>
+            <span class="sub">${esc(p.category)} · ${esc(p.tier)}${p.offer_text ? " · " + esc(p.offer_text) : ""}</span>
+          </div>
+          <div class="quick">
+            <button class="neutral" onclick="event.stopPropagation(); showPartnerForm(${JSON.stringify(p).replace(/"/g, "&quot;")})">Edit</button>
+            <button class="${p.active ? "reject" : "approve"}" onclick="event.stopPropagation(); togglePartnerActive('${p.id}', ${!p.active})">${p.active ? "Pause" : "Activate"}</button>
+          </div>
+        </div>
+        <div class="details">
+          ${kvBlock(p, ["id", "name", "category", "tier", "blurb", "offer_text", "redemption_instructions", "terms", "website", "charger_ids", "latitude", "longitude", "active", "approved", "valid_from", "valid_until"])}
+          <div class="quick" style="margin-top:10px">
+            <button class="reject" onclick="deletePartner('${p.id}')">Delete</button>
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+  } catch (e) {
+    el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+function showPartnerForm(partner) {
+  const p = partner || {};
+  const el = document.getElementById("partnerForm");
+  el.style.display = "";
+  el.innerHTML = `
+    <div class="editform">
+      <div><label>Name</label><input id="pf_name" value="${esc(p.name ?? "")}"></div>
+      <div><label>Category (cafe / food / retail / attraction)</label><input id="pf_category" value="${esc(p.category ?? "")}"></div>
+      <div><label>Tier</label>
+        <select id="pf_tier">
+          <option value="partner" ${p.tier !== "anchor" ? "selected" : ""}>partner</option>
+          <option value="anchor" ${p.tier === "anchor" ? "selected" : ""}>anchor</option>
+        </select>
+      </div>
+      <div><label>Blurb</label><input id="pf_blurb" value="${esc(p.blurb ?? "")}"></div>
+      <div><label>Offer text</label><input id="pf_offer" value="${esc(p.offer_text ?? "")}"></div>
+      <div><label>Redemption instructions</label><input id="pf_redemption" value="${esc(p.redemption_instructions ?? "")}" placeholder="e.g. Show the app at checkout"></div>
+      <div><label>Terms</label><input id="pf_terms" value="${esc(p.terms ?? "")}" placeholder="e.g. One per customer, dine-in only"></div>
+      <div><label>Website</label><input id="pf_website" value="${esc(p.website ?? "")}"></div>
+      <div><label>Charger IDs (comma-separated)</label><input id="pf_chargerIds" value="${esc((p.charger_ids ?? []).join(","))}"></div>
+      <div><label>Latitude (optional, enables walking distance)</label><input id="pf_lat" value="${esc(p.latitude ?? "")}" placeholder="e.g. -33.8688"></div>
+      <div><label>Longitude (optional, enables walking distance)</label><input id="pf_lon" value="${esc(p.longitude ?? "")}" placeholder="e.g. 151.2093"></div>
+      <div><label>Valid until (optional, YYYY-MM-DD)</label><input id="pf_validUntil" value="${esc(p.valid_until ? p.valid_until.slice(0, 10) : "")}"></div>
+      <div style="display:flex;gap:16px;align-items:center">
+        <label><input type="checkbox" id="pf_active" ${p.active ? "checked" : ""}> Active</label>
+        <label><input type="checkbox" id="pf_approved" ${p.approved !== false ? "checked" : ""}> Approved</label>
+      </div>
+      <div class="quick" style="margin-top:8px">
+        <button onclick="savePartner('${p.id ?? ""}')">Save</button>
+        <button class="neutral" onclick="document.getElementById('partnerForm').style.display='none'">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function savePartner(id) {
+  const val = fieldId => document.getElementById(fieldId).value.trim();
+  const chargerIDs = val("pf_chargerIds").split(",").map(s => s.trim()).filter(Boolean).map(Number);
+  const body = {
+    id: id || undefined,
+    name: val("pf_name"),
+    category: val("pf_category"),
+    tier: val("pf_tier"),
+    blurb: val("pf_blurb") || undefined,
+    offerText: val("pf_offer") || undefined,
+    redemptionInstructions: val("pf_redemption") || undefined,
+    terms: val("pf_terms") || undefined,
+    website: val("pf_website") || undefined,
+    latitude: val("pf_lat") ? Number(val("pf_lat")) : undefined,
+    longitude: val("pf_lon") ? Number(val("pf_lon")) : undefined,
+    chargerIDs,
+    active: document.getElementById("pf_active").checked,
+    approved: document.getElementById("pf_approved").checked,
+    validUntil: val("pf_validUntil") ? new Date(val("pf_validUntil")).toISOString() : undefined,
+  };
+  try {
+    await api("savePartner", body);
+    toast("Partner saved ✓");
+    document.getElementById("partnerForm").style.display = "none";
+    loadPartners();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+async function togglePartnerActive(id, active) {
+  try {
+    await api("togglePartnerActive", { id, active });
+    toast(active ? "Partner activated" : "Partner paused");
+    loadPartners();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+async function deletePartner(id) {
+  if (!confirm("Permanently delete this partner?")) return;
+  try {
+    await api("deletePartner", { id });
+    toast("Partner deleted");
+    loadPartners();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
 function refreshAll() { loadHome(); loadModeration(); loadTickets(); loadSignups(); loadContent(); }
 
 const HISTORY_TABLE_LABELS = {
@@ -714,6 +882,9 @@ async function loadHome() {
       ...o.reports.items.map(r => ({ when: r.created_at, icon: "🚩", text: r.subject ?? "Report #" + r.id, tab: "moderation" })),
     ].sort((a, b) => new Date(b.when) - new Date(a.when)).slice(0, 3);
 
+    const oldest = o.oldestOpenTicket;
+    const oldestDays = oldest ? Math.floor((Date.now() - new Date(oldest.created_at)) / 864e5) : 0;
+
     el.innerHTML = `
       <div class="hero">
         <h1>${greet}, Adam 👋</h1>
@@ -725,6 +896,7 @@ async function loadHome() {
         <div class="stat blue click" onclick="showTab('moderation')"><div class="ic">⚡</div><div class="n">${modCount}</div><div class="l">To moderate</div></div>
         <div class="stat amber click" onclick="showTab('moderation')"><div class="ic">🚩</div><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
         <div class="stat pink click" onclick="showTab('signups')"><div class="ic">🌱</div><div class="n">${last7}</div><div class="l">Signups this week</div></div>
+        ${oldest ? `<div class="stat ${oldestDays >= 3 ? "amber" : "green"} click" onclick="showTab('tickets')" title="${esc(oldest.subject)}"><div class="ic">⏳</div><div class="n">${oldestDays}d</div><div class="l">Oldest open ticket</div></div>` : ""}
       </div>
 
       <div class="pillrow">
@@ -747,7 +919,53 @@ async function loadHome() {
       <div id="checklist"></div>
     `;
     loadHomeChecklist();
+    // Once-per-day confetti the first time a load lands on genuine inbox
+    // zero — not on every refresh (that'd get old fast), keyed by
+    // calendar date in localStorage so reopening the tab tomorrow can
+    // celebrate again.
+    if (allClear) {
+      const today = new Date().toDateString();
+      if (localStorage.getItem("cn_last_celebrated") !== today) {
+        localStorage.setItem("cn_last_celebrated", today);
+        celebrateAllClear();
+      }
+    }
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
+}
+
+// Dependency-free confetti burst — a handful of colored divs that fall and
+// spin via CSS, then clean themselves up. Just for the "all clear" moment;
+// purely decorative, nothing depends on it.
+function celebrateAllClear() {
+  const colors = ["#3DDC84", "#E8B84B", "#4B9FE8", "#E8544B", "#B84BE8"];
+  const layer = document.createElement("div");
+  layer.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden";
+  document.body.appendChild(layer);
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement("div");
+    const size = 6 + Math.random() * 6;
+    const left = Math.random() * 100;
+    const delay = Math.random() * 0.4;
+    const duration = 2.2 + Math.random() * 1.2;
+    const color = colors[i % colors.length];
+    piece.style.cssText = `
+      position:absolute; top:-20px; left:${left}vw; width:${size}px; height:${size * 0.4}px;
+      background:${color}; opacity:0.9; border-radius:1px;
+      animation: cn-confetti-fall ${duration}s cubic-bezier(.25,.46,.45,.94) ${delay}s forwards;
+    `;
+    layer.appendChild(piece);
+  }
+  setTimeout(() => layer.remove(), 4000);
+}
+if (!document.getElementById("cn-confetti-style")) {
+  const style = document.createElement("style");
+  style.id = "cn-confetti-style";
+  style.textContent = `
+    @keyframes cn-confetti-fall {
+      0%   { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+      100% { transform: translateY(100vh) rotate(540deg); opacity: 0; }
+    }`;
+  document.head.appendChild(style);
 }
 
 // ── Moderation ────────────────────────────────────────────────────────
@@ -767,27 +985,32 @@ const MOD_SECTIONS = [
   { key: "reports", label: "Reports" },
   { key: "rates", label: "Rate reports" },
   { key: "suggestions", label: "Edit suggestions" },
+  { key: "followups", label: "Needs follow-up" },
 ];
 
 async function loadModeration() {
   const el = document.getElementById("tab-moderation");
   el.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const [{ chargers, notes, reports }, { rates }, { suggestions }] = await Promise.all([
+    const [{ chargers, notes, reports }, { rates }, { suggestions }, { suggestions: followUps }] = await Promise.all([
       api("pending"),
       api("pendingRates"),
       api("pendingEditSuggestions"),
+      api("pendingManualFollowUps"),
     ]);
     window._modChargers = chargers ?? [];
     window._modNotes = notes ?? [];
     window._modRates = rates ?? [];
     window._modEditSuggestions = suggestions ?? [];
+    window._modFollowUps = followUps ?? [];
+    window._modSuggestionSelection = new Set();
     window._modCounts = {
       chargers: chargers?.length ?? 0,
       notes: notes?.length ?? 0,
       reports: reports?.length ?? 0,
       rates: rates?.length ?? 0,
       suggestions: suggestions?.length ?? 0,
+      followups: followUps?.length ?? 0,
     };
     const pendingCount = window._modCounts.chargers + window._modCounts.notes + window._modCounts.rates + window._modCounts.suggestions;
     const badge = document.getElementById("modBadge");
@@ -799,23 +1022,31 @@ async function loadModeration() {
     sec.chargers = chargers?.length ? chargers.map(c => {
       const place = [c.town, c.state_or_province].filter(Boolean).join(", ");
       const sub = [place, c.power_kw ? c.power_kw + " kW" : "", fmtDate(c.created_at)].filter(Boolean).join(" · ");
+      const mapUrl = (c.latitude != null && c.longitude != null) ? `https://www.google.com/maps?q=${c.latitude},${c.longitude}` : null;
+      const duplicates = c.nearbyExisting ?? [];
       return `
       <div class="card">
         <div class="summary" onclick="toggleCard(this)">
           <span class="chev">▶</span>
           <div class="grow">
-            <h3>${esc(c.title ?? "Charger #" + c.id)}</h3>
+            <h3>${esc(c.title ?? "Charger #" + c.id)} ${duplicates.length ? `<span class="pill rejected">possible duplicate</span>` : ""}</h3>
             <span class="sub">${esc(sub)}</span>
           </div>
           <div class="quick">
             <button class="neutral" onclick="event.stopPropagation(); editCharger('mod', '${c.id}')">Edit</button>
             <button class="approve" onclick="event.stopPropagation(); moderate('charger', '${c.id}', 'approve')">Approve</button>
-            <button class="reject" onclick="event.stopPropagation(); moderate('charger', '${c.id}', 'reject')">Reject</button>
+            <button class="reject" onclick="event.stopPropagation(); rejectCharger('${c.id}')">Reject</button>
           </div>
         </div>
         <div class="details">
-          <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
-          ${kvBlock(c, ["id", "title", "created_at", "status"])}
+          <div class="meta">#${c.id} · ${fmtDate(c.created_at)}${mapUrl ? ` · <a href="${mapUrl}" target="_blank" rel="noopener">View on map ↗</a>` : ""}</div>
+          ${duplicates.length ? `
+          <div class="body">Possibly already listed, within ${Math.max(...duplicates.map(d => d.distanceM))}m:
+            <ul style="margin:6px 0 0;padding-left:18px">
+              ${duplicates.map(d => `<li>${esc(d.title)} — ${esc(d.source)}, ${d.distanceM}m away</li>`).join("")}
+            </ul>
+          </div>` : ""}
+          ${kvBlock(c, ["id", "title", "connector_type", "power_kw", "operator_name", "is_free", "cost_info", "towing_friendly", "created_at", "status"])}
         </div>
       </div>`;
     }).join("") : '<div class="empty">No pending chargers</div>';
@@ -842,33 +1073,61 @@ async function loadModeration() {
       </div>`).join("") : '<div class="empty">No pending notes</div>';
 
     window._reports = reports ?? [];
-    sec.reports = reports?.length ? reports.map(r => {
-      const isCharger = r.kind === "charger" && r.charger_id != null;
-      const reasonLabel = REPORT_REASON_LABELS[r.reason] || r.reason || "";
+    // Grouped by charger (source+id) so N reports of the same charger read
+    // as one card with a count, not N identical cards to click through —
+    // previously every report was its own card regardless of how many
+    // others already flagged the same charger. Non-charger reports (or
+    // charger reports missing an id) each get their own singleton group,
+    // same as before.
+    const reportGroups = {};
+    for (const r of (reports ?? [])) {
+      const key = (r.kind === "charger" && r.charger_id != null) ? `${r.charger_source}:${r.charger_id}` : `single:${r.id}`;
+      (reportGroups[key] ??= []).push(r);
+    }
+    const reportGroupList = Object.values(reportGroups);
+    sec.reports = reportGroupList.length ? reportGroupList.map(group => {
+      const first = group[0];
+      const isCharger = first.kind === "charger" && first.charger_id != null;
+      const ids = group.map(r => r.id);
+      const idsLiteral = "[" + ids.map(id => `'${id}'`).join(",") + "]";
+      const latest = group.reduce((a, b) => (a.created_at > b.created_at ? a : b));
+      const reasonCounts = {};
+      for (const r of group) {
+        const label = REPORT_REASON_LABELS[r.reason] || r.reason || r.kind || "Report";
+        reasonCounts[label] = (reasonCounts[label] ?? 0) + 1;
+      }
+      const reasonSummary = Object.entries(reasonCounts).map(([label, n]) => n > 1 ? `${n}× ${label}` : label).join(", ");
       return `
       <div class="card">
         <div class="summary" onclick="toggleCard(this)">
           <span class="chev">▶</span>
           <div class="grow">
-            <h3>${esc(r.charger_title || r.subject || "Report #" + r.id)} ${r.status ? `<span class="pill ${esc(r.status)}">${esc(r.status)}</span>` : ""}</h3>
-            <span class="sub">${esc(reasonLabel || r.kind || "")}${r.charger_source ? " · " + esc(r.charger_source) : ""} · ${fmtDate(r.created_at)}</span>
+            <h3>${esc(first.charger_title || first.subject || "Report #" + first.id)} ${group.length > 1 ? `<span class="pill pending">${group.length} reports</span>` : (first.status ? `<span class="pill ${esc(first.status)}">${esc(first.status)}</span>` : "")}</h3>
+            <span class="sub">${esc(reasonSummary)}${first.charger_source ? " · " + esc(first.charger_source) : ""} · latest ${fmtDate(latest.created_at)}</span>
           </div>
           <div class="quick">
-            <button class="neutral" onclick="event.stopPropagation(); resolveReport('${r.id}', 'dismissed')">Dismiss</button>
+            <button class="neutral" onclick="event.stopPropagation(); resolveReport(${idsLiteral}, 'dismissed')">Dismiss${group.length > 1 ? " all" : ""}</button>
           </div>
         </div>
         <div class="details">
-          ${r.charger_address ? `<div class="meta">${esc(r.charger_address)}</div>` : ""}
-          ${r.detail ? `<div class="body">${esc(r.detail)}</div>` : ""}
-          ${kvBlock(r, ["id", "kind", "reason", "charger_id", "charger_source", "status", "created_at"])}
+          ${first.charger_address ? `<div class="meta">${esc(first.charger_address)}</div>` : ""}
+          ${group.map(r => `
+          <div class="body" style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+            <div class="meta">${esc(REPORT_REASON_LABELS[r.reason] || r.reason || "")} · ${r.user_id ? "Signed-in user" : "Anonymous"} · ${fmtDate(r.created_at)}</div>
+            ${r.detail ? esc(r.detail) : ""}
+          </div>`).join("")}
           ${isCharger ? `
           <div class="quick" style="margin-top:10px;flex-wrap:wrap">
-            <button class="neutral" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'mark_possibly_unavailable')">Mark possibly unavailable</button>
-            <button class="neutral" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'mark_temporarily_offline')">Mark temporarily offline</button>
-            <button class="neutral" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'mark_possibly_removed')">Mark possibly removed</button>
-            <button class="reject" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'hide')">Hide charger</button>
-            <button class="approve" onclick="moderateChargerFromReport('${r.id}', ${r.charger_id}, '${esc(r.charger_source || "")}', 'restore')">Restore charger</button>
-            <button class="neutral" onclick="resolveReport('${r.id}', 'resolved')">Resolve (no charger change)</button>
+            <button class="neutral" onclick="moderateChargerFromReport(${idsLiteral}, ${first.charger_id}, '${esc(first.charger_source || "")}', 'mark_possibly_unavailable')">Mark possibly unavailable</button>
+            <button class="neutral" onclick="moderateChargerFromReport(${idsLiteral}, ${first.charger_id}, '${esc(first.charger_source || "")}', 'mark_temporarily_offline')">Mark temporarily offline</button>
+            <button class="neutral" onclick="moderateChargerFromReport(${idsLiteral}, ${first.charger_id}, '${esc(first.charger_source || "")}', 'mark_possibly_removed')">Mark possibly removed</button>
+            <button class="reject" onclick="moderateChargerFromReport(${idsLiteral}, ${first.charger_id}, '${esc(first.charger_source || "")}', 'mark_permanently_closed')">Mark permanently closed</button>
+            <button class="reject" onclick="moderateChargerFromReport(${idsLiteral}, ${first.charger_id}, '${esc(first.charger_source || "")}', 'hide')">Hide charger</button>
+            <button class="approve" onclick="moderateChargerFromReport(${idsLiteral}, ${first.charger_id}, '${esc(first.charger_source || "")}', 'restore')">Restore charger</button>
+            <button class="neutral" onclick="resolveReport(${idsLiteral}, 'resolved')">Resolve (no charger change)</button>
+            <button class="neutral" onclick="promptChargerCorrection(${first.charger_id}, '${esc(first.charger_source || "")}')">Correct a field…</button>
+            <button class="neutral" onclick="promptChargerAdminNote(${first.charger_id}, '${esc(first.charger_source || "")}')">Admin note…</button>
+            <button class="neutral" onclick="promptMergeDuplicate(${first.charger_id}, '${esc(first.charger_source || "")}')">Mark as duplicate of…</button>
           </div>` : ""}
         </div>
       </div>`;
@@ -895,26 +1154,24 @@ async function loadModeration() {
       </div>`;
     }).join("") : '<div class="empty">No pending rate reports</div>';
 
-    sec.suggestions = suggestions?.length ? suggestions.map(s => `
+    sec.suggestions = renderSuggestionsSection(suggestions ?? []);
+    sec.followups = followUps?.length ? followUps.map(s => `
       <div class="card">
         <div class="summary" onclick="toggleCard(this)">
           <span class="chev">▶</span>
           <div class="grow">
-            <h3>Charger #${s.charger_id} (${esc(s.charger_source)}) — ${esc(EDIT_FIELD_LABELS[s.field] || s.field)}</h3>
-            <span class="sub">${esc(s.suggested_value)} · ${fmtDate(s.created_at)}</span>
+            <h3>${esc(s.chargerTitle || "Charger #" + s.charger_id)} — ${esc(EDIT_FIELD_LABELS[s.field] || s.field)}</h3>
+            <span class="sub">Approved, still needs a manual edit · ${fmtDate(s.created_at)}</span>
           </div>
           <div class="quick">
-            <button class="approve" onclick="event.stopPropagation(); moderateEditSuggestion('${s.id}', 'approve')">Approve</button>
-            <button class="reject" onclick="event.stopPropagation(); moderateEditSuggestion('${s.id}', 'reject')">Reject</button>
+            <button class="approve" onclick="event.stopPropagation(); completeManualFollowUp('${s.id}')">Mark done</button>
           </div>
         </div>
         <div class="details">
-          ${s.charger_source === "community" && !["connector_type", "power_kw", "operator_name"].includes(s.field)
-            ? `<div class="body">Community charger — approving this won't auto-patch the listing (no direct column for "${esc(EDIT_FIELD_LABELS[s.field] || s.field)}"). Use Content → edit the charger manually after approving.</div>`
-            : ""}
+          <div class="body">Suggested value: <strong>${esc(s.suggested_value)}</strong> — find "${esc(s.chargerTitle || "Charger #" + s.charger_id)}" in Content, apply this manually, then mark done.</div>
           ${kvBlock(s, ["id", "charger_source", "charger_id", "field", "suggested_value", "status", "created_at"])}
         </div>
-      </div>`).join("") : '<div class="empty">No pending edit suggestions</div>';
+      </div>`).join("") : '<div class="empty">Nothing awaiting manual follow-up</div>';
 
     window._modSections = sec;
     // Default to the first non-empty queue so whatever needs attention is
@@ -953,12 +1210,21 @@ function showModSection(key) {
   window._modActiveTab = key;
   renderModeration();
 }
-async function moderate(type, id, decision) {
+async function moderate(type, id, decision, rejectionReason) {
   try {
-    await api("moderate", { type, id, decision });
+    await api("moderate", { type, id, decision, rejectionReason });
     toast(decision === "approve" ? "Approved ✓" : "Rejected");
     loadModeration();
   } catch (e) { toast("Failed: " + e.message); }
+}
+// Charger submissions only: prompts for a reason so the submitter sees why
+// (see MySubmissionsView's "New Chargers" tab) instead of a bare rejection.
+// Cancelling the prompt cancels the rejection entirely, rather than
+// rejecting with a blank reason.
+async function rejectCharger(id) {
+  const reason = prompt("Reason for rejecting this submission (shown to the submitter):");
+  if (reason === null) return;
+  await moderate("charger", id, "reject", reason);
 }
 async function moderateRate(id, decision) {
   try {
@@ -969,8 +1235,114 @@ async function moderateRate(id, decision) {
 }
 async function moderateEditSuggestion(id, decision) {
   try {
-    const { patchedCommunityCharger } = await api("moderateEditSuggestion", { id, decision });
-    toast(decision === "reject" ? "Suggestion rejected" : patchedCommunityCharger ? "Approved and charger updated ✓" : "Approved ✓");
+    const { patchedCommunityCharger, needsManualPatch } = await api("moderateEditSuggestion", { id, decision });
+    toast(decision === "reject" ? "Suggestion rejected"
+      : needsManualPatch ? "Approved — needs a manual patch, see Needs follow-up"
+      : patchedCommunityCharger ? "Approved and charger updated ✓" : "Approved ✓");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+async function completeManualFollowUp(id) {
+  try {
+    await api("completeManualFollowUp", { id });
+    toast("Marked done ✓");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+// ── Edit suggestions: search + bulk select ──────────────────────────────
+// A separate render path from the rest of MOD_SECTIONS: the search box and
+// bulk-action bar live outside the swapped cards container (#suggestionCards)
+// so typing a search query doesn't destroy the input's own focus the way a
+// full renderModeration() would (same reasoning as history's search box).
+const EDIT_SUGGESTION_COMMUNITY_COLUMNS = ["connector_type", "power_kw", "operator_name"];
+
+function renderSuggestionsSection(suggestions) {
+  window._modEditSuggestions = suggestions;
+  return `
+    <div class="searchrow">
+      <input type="text" id="suggestionsQ" placeholder="Search suggestions (charger, field, value)…" oninput="renderSuggestionCards()">
+      <button id="bulkApproveBtn" class="approve" style="display:none" onclick="bulkModerateSuggestions('approve')">Approve selected</button>
+      <button id="bulkRejectBtn" class="reject" style="display:none" onclick="bulkModerateSuggestions('reject')">Reject selected</button>
+    </div>
+    <div id="suggestionCards">${suggestionCardsHtml(suggestions)}</div>`;
+}
+
+function renderSuggestionCards() {
+  const q = (document.getElementById("suggestionsQ")?.value ?? "").trim().toLowerCase();
+  const all = window._modEditSuggestions ?? [];
+  const filtered = !q ? all : all.filter(s => {
+    const haystack = [s.chargerTitle, "charger #" + s.charger_id, s.charger_source, EDIT_FIELD_LABELS[s.field] || s.field, s.suggested_value]
+      .filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(q);
+  });
+  const el = document.getElementById("suggestionCards");
+  if (el) el.innerHTML = suggestionCardsHtml(filtered, all.length);
+  updateBulkButtons();
+}
+
+function suggestionCardsHtml(suggestions, totalCount) {
+  if (!suggestions.length) {
+    return `<div class="empty">${totalCount ? "No suggestions match your search" : "No pending edit suggestions"}</div>`;
+  }
+  return suggestions.map(s => {
+    const hasDiff = s.currentValue !== undefined && s.currentValue !== null && s.currentValue !== "";
+    const diffLine = hasDiff
+      ? `<div class="body">Current: <strong>${esc(String(s.currentValue))}</strong> → Suggested: <strong>${esc(s.suggested_value)}</strong></div>`
+      : `<div class="body">Suggested: <strong>${esc(s.suggested_value)}</strong></div>`;
+    const needsManualNote = s.charger_source === "community" && !EDIT_SUGGESTION_COMMUNITY_COLUMNS.includes(s.field)
+      ? `<div class="body">Community charger — approving this won't auto-patch the listing (no direct column for "${esc(EDIT_FIELD_LABELS[s.field] || s.field)}"). It'll move to Needs follow-up so the manual edit stays tracked.</div>`
+      : "";
+    return `
+      <div class="card">
+        <div class="summary" onclick="toggleCard(this)">
+          <input type="checkbox" ${window._modSuggestionSelection?.has(String(s.id)) ? "checked" : ""}
+            onclick="event.stopPropagation(); toggleSuggestionSelect('${s.id}', this.checked)" style="margin-right:4px">
+          <span class="chev">▶</span>
+          <div class="grow">
+            <h3>${esc(s.chargerTitle || "Charger #" + s.charger_id)} (${esc(s.charger_source)}) — ${esc(EDIT_FIELD_LABELS[s.field] || s.field)}</h3>
+            <span class="sub">${esc(s.suggested_value)} · ${fmtDate(s.created_at)}</span>
+          </div>
+          <div class="quick">
+            <button class="approve" onclick="event.stopPropagation(); moderateEditSuggestion('${s.id}', 'approve')">Approve</button>
+            <button class="reject" onclick="event.stopPropagation(); moderateEditSuggestion('${s.id}', 'reject')">Reject</button>
+          </div>
+        </div>
+        <div class="details">
+          ${diffLine}
+          ${needsManualNote}
+          ${kvBlock(s, ["id", "charger_source", "charger_id", "field", "suggested_value", "status", "created_at"])}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function toggleSuggestionSelect(id, checked) {
+  if (!window._modSuggestionSelection) window._modSuggestionSelection = new Set();
+  if (checked) window._modSuggestionSelection.add(String(id));
+  else window._modSuggestionSelection.delete(String(id));
+  updateBulkButtons();
+}
+
+function updateBulkButtons() {
+  const n = window._modSuggestionSelection?.size ?? 0;
+  for (const [btnId, label] of [["bulkApproveBtn", "Approve"], ["bulkRejectBtn", "Reject"]]) {
+    const btn = document.getElementById(btnId);
+    if (!btn) continue;
+    btn.style.display = n > 0 ? "" : "none";
+    btn.textContent = `${label} selected (${n})`;
+  }
+}
+
+async function bulkModerateSuggestions(decision) {
+  const ids = [...(window._modSuggestionSelection ?? [])];
+  if (ids.length === 0) return;
+  if (!confirm(`${decision === "approve" ? "Approve" : "Reject"} ${ids.length} selected suggestion${ids.length > 1 ? "s" : ""}?`)) return;
+  try {
+    const { results } = await api("bulkModerateEditSuggestions", { ids, decision });
+    const failed = Object.entries(results ?? {}).filter(([, r]) => !r.ok);
+    toast(failed.length ? `${ids.length - failed.length} done, ${failed.length} failed` : `${ids.length} ${decision === "approve" ? "approved" : "rejected"} ✓`);
+    window._modSuggestionSelection = new Set();
     loadModeration();
   } catch (e) { toast("Failed: " + e.message); }
 }
@@ -1031,15 +1403,15 @@ function saveCharger(scope, id) {
     .then(() => { toast("Charger updated"); scope === "mod" ? loadModeration() : loadContent(); })
     .catch(e => toast("Failed: " + e.message));
 }
+// Matches ChargerReportReason in ContentReportService.swift exactly — the
+// incorrect_connector/speed/access/address/operator reasons that used to
+// live here were removed from the app's enum (they overlap with "Suggest
+// an Edit", a separate flow), so keeping stale labels for reasons the app
+// can no longer submit was just dead code inviting drift.
 const REPORT_REASON_LABELS = {
   offline: "Charger appears offline",
   removed: "Charger has been removed",
   incorrect_location: "Incorrect location",
-  incorrect_connector: "Incorrect connector information",
-  incorrect_speed: "Incorrect charging speed",
-  incorrect_access: "Access information is wrong",
-  incorrect_address: "Incorrect address",
-  incorrect_operator: "Incorrect operator",
   damaged: "Charger is damaged",
   duplicate: "Duplicate listing",
   other: "Other",
@@ -1056,14 +1428,17 @@ async function deleteReport(id) {
     loadModeration();
   } catch (e) { toast("Failed: " + e.message); }
 }
-async function resolveReport(id, status) {
+// `ids` is an array — a grouped report card's "Dismiss all"/"Resolve"
+// applies to every report in the group in one action, not just one.
+async function resolveReport(ids, status) {
   try {
-    await api("resolveReport", { id, status });
-    toast(status === "dismissed" ? "Report dismissed" : "Report resolved");
+    await Promise.all(ids.map(id => api("resolveReport", { id, status })));
+    const n = ids.length;
+    toast(status === "dismissed" ? `${n > 1 ? n + " reports" : "Report"} dismissed` : `${n > 1 ? n + " reports" : "Report"} resolved`);
     loadModeration();
   } catch (e) { toast("Failed: " + e.message); }
 }
-async function moderateChargerFromReport(reportId, chargerId, chargerSource, moderationAction) {
+async function moderateChargerFromReport(reportIds, chargerId, chargerSource, moderationAction) {
   let warningDetails = null;
   if (moderationAction.startsWith("mark_")) {
     warningDetails = prompt("Optional details to show users with this warning (leave blank for none):", "");
@@ -1073,8 +1448,53 @@ async function moderateChargerFromReport(reportId, chargerId, chargerSource, mod
   }
   try {
     await api("moderateCharger", { chargerId, chargerSource, moderationAction, warningDetails });
-    await api("resolveReport", { id: reportId, status: "resolved" });
-    toast("Charger updated");
+    await Promise.all(reportIds.map(id => api("resolveReport", { id, status: "resolved" })));
+    toast(reportIds.length > 1 ? `Charger updated, ${reportIds.length} reports resolved` : "Charger updated");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+const CHARGER_CORRECTION_FIELDS = [
+  "connector_type", "power_kw", "operator_name", "address", "access_info",
+  "name", "latitude", "longitude", "opening_hours", "stall_count",
+];
+
+async function promptChargerCorrection(chargerId, chargerSource) {
+  const field = prompt(`Field to correct (one of: ${CHARGER_CORRECTION_FIELDS.join(", ")}):`, "");
+  if (!field) return;
+  if (!CHARGER_CORRECTION_FIELDS.includes(field.trim())) { toast("Unknown field: " + field); return; }
+  const suggestedValue = prompt(`New value for "${field}":`, "");
+  if (!suggestedValue) return;
+  try {
+    await api("adminCorrectCharger", { chargerId, chargerSource, field: field.trim(), suggestedValue });
+    toast("Correction applied ✓");
+    loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+async function promptChargerAdminNote(chargerId, chargerSource) {
+  let existing = "";
+  try {
+    const { note } = await api("chargerAdminNote", { chargerId, chargerSource });
+    existing = note?.note ?? "";
+  } catch (e) { /* fall through with empty note */ }
+  const note = prompt("Internal admin note for this charger (never shown to users; blank clears it):", existing);
+  if (note === null) return; // cancelled
+  try {
+    await api("setChargerAdminNote", { chargerId, chargerSource, note });
+    toast(note.trim() ? "Note saved ✓" : "Note cleared ✓");
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+async function promptMergeDuplicate(duplicateId, duplicateSource) {
+  const primaryIdRaw = prompt("ID of the charger this one is a duplicate of (the one that should keep showing):", "");
+  if (!primaryIdRaw) return;
+  const primaryId = Number(primaryIdRaw);
+  if (!primaryId) { toast("Invalid ID"); return; }
+  const primarySource = prompt("Source of that charger (ocm / community / government):", duplicateSource) || duplicateSource;
+  try {
+    await api("mergeDuplicateCharger", { duplicateId, duplicateSource, primaryId, primarySource: primarySource.trim() });
+    toast("Marked as duplicate ✓");
     loadModeration();
   } catch (e) { toast("Failed: " + e.message); }
 }
@@ -1096,11 +1516,23 @@ async function loadTickets() {
     const needsReply = tickets.filter(t => t.status === "open");
     const inProgress = tickets.filter(t => t.status === "in_progress");
     const closed = tickets.filter(t => t.status === "closed");
+    // Platform split of open tickets specifically -- the point isn't "how
+    // many tickets exist total", it's "where should I be looking right
+    // now" when the two apps aren't at the same feature/bug parity.
+    const openTix = tickets.filter(t => t.status !== "closed");
+    const iosOpen = openTix.filter(t => t.platform === "iOS").length;
+    const androidOpen = openTix.filter(t => t.platform === "Android").length;
+    const unknownOpen = openTix.length - iosOpen - androidOpen;
     document.getElementById("ticketStats").innerHTML = `
       <div class="stats">
         <div class="stat green"><div class="n">${needsReply.length}</div><div class="l">Needs a reply</div></div>
         <div class="stat blue"><div class="n">${inProgress.length}</div><div class="l">In progress</div></div>
         <div class="stat amber"><div class="n">${closed.length}</div><div class="l">Resolved</div></div>
+      </div>
+      <div class="pillrow" style="margin:-4px 0 10px">
+        <div class="pillstat">🍎 <b>${iosOpen}</b> open on iOS</div>
+        <div class="pillstat">🤖 <b>${androidOpen}</b> open on Android</div>
+        ${unknownOpen ? `<div class="pillstat">❔ <b>${unknownOpen}</b> unknown platform</div>` : ""}
       </div>
       <div class="actions" style="margin:-8px 0 14px">
         <button class="neutral" onclick="downloadTicketsCSV()">⬇️ Download tickets CSV</button>
@@ -1109,15 +1541,22 @@ async function loadTickets() {
   } catch (e) { list.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
 }
 
+function platformIcon(p) {
+  if (p === "iOS") return "🍎";
+  if (p === "Android") return "🤖";
+  return "";
+}
+
 function ticketRow(t) {
   const icon = t.category === "bug" ? "🐛" : t.category === "feature" ? "💡" : "💬";
+  const plat = platformIcon(t.platform);
   const sub = [t.name, fmtDate(t.created_at)].filter(Boolean).map(esc).join(" · ");
   return `
   <div class="card rowlink ${String(t.id) === String(convoId) ? "sel" : ""}" data-tid="${t.id}" style="padding:12px 14px;cursor:pointer" onclick="openConvo('${t.id}')">
     <div class="summary">
       <span style="font-size:16px">${icon}</span>
       <div class="grow">
-        <h3 style="font-size:13px">${esc(t.subject)}</h3>
+        <h3 style="font-size:13px">${esc(t.subject)}${plat ? ` <span title="${esc(t.platform)}" style="font-size:12px">${plat}</span>` : ""}</h3>
         <span class="sub">${sub}</span>
       </div>
       ${t.admin_note ? '<span title="Has internal note">📌</span>' : ""}
@@ -1142,7 +1581,7 @@ function renderTicketList() {
 }
 function downloadTicketsCSV() {
   if (!LAST_TICKETS.length) { toast("No tickets yet"); return; }
-  const cols = ["id", "created_at", "status", "category", "subject", "detail", "name", "email", "app_version", "public_reply", "admin_note"];
+  const cols = ["id", "created_at", "status", "category", "subject", "detail", "name", "email", "platform", "app_version", "public_reply", "admin_note"];
   const cell = v => `"${String(v ?? "").replaceAll('"', '""')}"`;
   const csv = [cols.join(","), ...LAST_TICKETS.map(t => cols.map(c => cell(t[c])).join(","))].join("\n");
   const a = document.createElement("a");
@@ -1162,6 +1601,8 @@ const TEMPLATES = [
   { label: "Feature idea, noted", text: "Hi {name}, thank you for the suggestion! We've added it to our feature list and we'll see if we can bring it to a future update. Ideas like this genuinely shape where the app goes next." },
   { label: "Can't reproduce", text: "Hi {name}, thanks for the report. We've tried to reproduce this on our end but haven't been able to so far. If it happens again, could you note what screen you were on and what you tapped just before? That would really help." },
   { label: "Resolved, thanks", text: "Hi {name}, this has now been resolved. Thank you again for taking the time to report it, and we hope the app is even better for you from here. If anything else comes up, don't hesitate to get in touch." },
+  { label: "Working as intended", text: "Hi {name}, thanks for flagging this! We had a look and this is actually working as intended rather than a bug — happy to explain further if it'd help. Appreciate you taking the time to check with us either way." },
+  { label: "Already tracked, duplicate", text: "Hi {name}, thanks for the report! This one's already on our radar from another ticket, so we've linked yours to it and you'll be updated here as soon as there's progress. Appreciate you letting us know." },
 ];
 // ── Full-screen conversation window (the ticket workspace) ───────────
 let convoId = null;
@@ -1187,7 +1628,7 @@ function renderConvoHeader() {
   const actions = document.getElementById("convoActions");
   if (!t) { actions.innerHTML = ""; return; }
   actions.innerHTML = `
-    <span class="sub" style="color:var(--text3);font-size:12px">${t.category === "bug" ? "🐛 Bug" : t.category === "feature" ? "💡 Feature idea" : "💬 Other"} · #${t.id}${t.email ? " · " + esc(t.email) : ""}${t.app_version ? " · v" + esc(t.app_version) : ""}</span>
+    <span class="sub" style="color:var(--text3);font-size:12px">${t.category === "bug" ? "🐛 Bug" : t.category === "feature" ? "💡 Feature idea" : "💬 Other"} · #${t.id}${t.platform ? " · " + platformIcon(t.platform) + " " + esc(t.platform) : ""}${t.email ? " · " + esc(t.email) : ""}${t.app_version ? " · v" + esc(t.app_version) : ""}</span>
     <span style="flex:1"></span>
     <input type="text" id="convoNote" placeholder="📌 Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="max-width:280px" onchange="saveConvoNote()">
     ${t.status === "open" ? `<button class="neutral" onclick="setConvoStatus('in_progress')">Mark in progress</button>` : ""}
@@ -1448,7 +1889,7 @@ async function loadContent() {
         </div>
         <div class="details">
           <div class="meta">#${c.id} · ${fmtDate(c.created_at)}</div>
-          ${kvBlock(c, ["id", "title", "created_at", "status"])}
+          ${kvBlock(c, ["id", "title", "connector_type", "power_kw", "operator_name", "is_free", "cost_info", "towing_friendly", "created_at", "status"])}
         </div>
       </div>`;
     }).join("") : '<div class="empty">No chargers</div>';
@@ -1493,7 +1934,7 @@ async function loadContent() {
             <span class="chev">▶</span>
             <div class="grow">
               <h3>${esc(g.station_name || "Unnamed station")} ${g.hidden ? '<span class="pill rejected">Hidden</span>' : ""}</h3>
-              <span class="sub">${esc(g.address ?? "")}</span>
+              <span class="sub">${esc(g.address ?? "")} · synced ${g.synced_at ? fmtDate(g.synced_at) : "never"}</span>
             </div>
             <div class="quick">
               ${g.hidden
@@ -1502,7 +1943,7 @@ async function loadContent() {
             </div>
           </div>
           <div class="details">
-            ${kvBlock(g, ["id", "station_name", "address", "operator", "hidden"])}
+            ${kvBlock(g, ["id", "station_name", "address", "operator", "hidden", "synced_at"])}
           </div>
         </div>`).join("") : '<div class="empty">No matching government chargers</div>';
       el.insertAdjacentHTML("beforeend", govHtml);
@@ -1570,13 +2011,36 @@ setInterval(() => { if (SECRET) loadTickets(); }, 60_000);
 
 // ── Keyboard shortcuts ────────────────────────────────────────────────
 // 1–5 switch tabs, r refreshes, / focuses the search on the current tab.
+// j/k walk the visible ticket list and open each one (mail-client style —
+// this is a workflow admin runs through many times a day, so shaving a
+// click off "next ticket" adds up). Cmd/Ctrl+Enter sends the reply from
+// inside the textarea without reaching for the mouse.
 const TAB_KEYS = { "1": "home", "2": "moderation", "3": "tickets", "4": "signups", "5": "content" };
+function visibleTicketIds() {
+  return [...document.querySelectorAll("#ticketList .card[data-tid]")].map(c => c.dataset.tid);
+}
+function stepTicket(delta) {
+  const ids = visibleTicketIds();
+  if (!ids.length) return;
+  const i = ids.indexOf(String(convoId));
+  const next = i === -1 ? 0 : Math.min(Math.max(i + delta, 0), ids.length - 1);
+  openConvo(ids[next]);
+  document.querySelector(`#ticketList .card[data-tid="${ids[next]}"]`)?.scrollIntoView({ block: "nearest" });
+}
 document.addEventListener("keydown", e => {
-  if (!SECRET || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (!SECRET) return;
   const tag = document.activeElement?.tagName;
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && document.activeElement?.id === "convoDraft") {
+    e.preventDefault();
+    sendConvo();
+    return;
+  }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
   if (TAB_KEYS[e.key]) { showTab(TAB_KEYS[e.key]); }
   else if (e.key === "r") { refreshAll(); toast("Refreshed"); }
+  else if (e.key === "j" && document.querySelector("nav button.active")?.dataset.tab === "tickets") { stepTicket(1); }
+  else if (e.key === "k" && document.querySelector("nav button.active")?.dataset.tab === "tickets") { stepTicket(-1); }
   else if (e.key === "/") {
     e.preventDefault();
     const active = document.querySelector("nav button.active")?.dataset.tab;
