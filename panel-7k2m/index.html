@@ -372,7 +372,7 @@
   <img src="https://madzzboi.github.io/charge-nomad-confirm/logo.png" alt="">
   <h1>Charge Nomad <span>Admin</span></h1>
   <div class="spacer"></div>
-  <button id="notifyBtn" onclick="toggleNotify()" title="Browser notification when a new ticket arrives">🔔</button>
+  <button id="notifyBtn" onclick="toggleNotify()" title="Browser notification when a new ticket arrives">Alerts</button>
   <button id="refreshBtn" onclick="refreshAll(); toast('Refreshed')">Refresh</button>
   <button id="logout" onclick="logout()">Lock</button>
 </header>
@@ -397,7 +397,13 @@
     <div id="ticketStats"></div>
     <div class="split">
       <div class="ticket-left">
-        <input type="text" id="ticketSearch" placeholder="🔎 Search tickets…" oninput="ticketFilter = this.value; renderTicketList()">
+        <input type="text" id="ticketSearch" placeholder="Search tickets…" oninput="ticketFilter = this.value; renderTicketList()">
+        <div class="modnav" id="ticketStatusFilter" style="margin:8px 0 0;padding-bottom:0;border-bottom:none">
+          <button class="active" data-status="all" onclick="setTicketStatusFilter('all')">All</button>
+          <button data-status="open" onclick="setTicketStatusFilter('open')">Needs a reply</button>
+          <button data-status="in_progress" onclick="setTicketStatusFilter('in_progress')">In progress</button>
+          <button data-status="closed" onclick="setTicketStatusFilter('closed')">Resolved</button>
+        </div>
         <div class="ticket-list" id="ticketList"><div class="empty">Loading…</div></div>
       </div>
       <div class="ticket-pane" id="ticketPane">
@@ -408,12 +414,12 @@
           <button class="neutral" onclick="loadConvo()">↻</button>
         </div>
         <div class="convo-actions" id="convoActions"></div>
-        <div class="convo-msgs" id="convoMsgs"><div class="empty">Select a ticket on the left to read and reply 👈</div></div>
+        <div class="convo-msgs" id="convoMsgs"><div class="empty">Select a ticket on the left to read and reply</div></div>
         <div class="convo-compose">
           <textarea id="convoDraft" rows="7" placeholder="Type your reply…"></textarea>
           <div class="compose-tools">
             <select class="tpl" id="convoTpl" onchange="applyConvoTemplate(this)">
-              <option value="">📋 Templates…</option>
+              <option value="">Templates…</option>
             </select>
             <button class="send" onclick="sendConvo()">Send</button>
           </div>
@@ -457,7 +463,7 @@
       One personal email, sent one-to-one to every account that signed up and said yes to updates — nobody ever sees another recipient's address. Write <code>{name}</code> anywhere you want their first name (falls back to "there" if unknown).
     </p>
     <div class="editform" style="max-width:640px">
-      <div><label>Subject</label><input type="text" id="bcSubject" placeholder="e.g. Thank you for being one of our first 1,000 🎉"></div>
+      <div><label>Subject</label><input type="text" id="bcSubject" placeholder="e.g. Thank you for being one of our first 1,000 subscribers"></div>
       <div>
         <label>Body (blank line = new paragraph)</label>
         <textarea id="bcBody" rows="10" placeholder="Hi {name},&#10;&#10;I honestly can't believe it's only been a month since launch..."></textarea>
@@ -892,7 +898,7 @@ function loadHomeChecklist() {
     <div class="card">
       <div class="summary" onclick="toggleChecklist()">
         <span class="chev" style="transform:rotate(${checklistOpen ? 90 : 0}deg)">▶</span>
-        <div class="grow"><h3 style="font-size:14px">${allDone ? "All done for today 🎉" : `${done} of ${CHECKLIST.length} checks done today`}</h3></div>
+        <div class="grow"><h3 style="font-size:14px">${allDone ? "All done for today" : `${done} of ${CHECKLIST.length} checks done today`}</h3></div>
         <span class="pill ${allDone ? "approved" : "pending"}">${done}/${CHECKLIST.length}</span>
       </div>
       ${checklistOpen ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
@@ -924,9 +930,9 @@ async function loadHome() {
 
     // Just the top 3 most recent things that need action, nothing more.
     const attention = [
-      ...o.openTickets.items.map(t => ({ when: t.created_at, icon: "🎫", text: t.subject, tab: "tickets" })),
-      ...o.pendingChargers.items.map(c => ({ when: c.created_at, icon: "⚡", text: c.title ?? "Charger #" + c.id, tab: "moderation" })),
-      ...o.reports.items.map(r => ({ when: r.created_at, icon: "🚩", text: r.subject ?? "Report #" + r.id, tab: "moderation" })),
+      ...o.openTickets.items.map(t => ({ when: t.created_at, text: t.subject, tab: "tickets" })),
+      ...o.pendingChargers.items.map(c => ({ when: c.created_at, text: c.title ?? "Charger #" + c.id, tab: "moderation" })),
+      ...o.reports.items.map(r => ({ when: r.created_at, text: r.subject ?? "Report #" + r.id, tab: "moderation" })),
     ].sort((a, b) => new Date(b.when) - new Date(a.when)).slice(0, 3);
 
     const oldest = o.oldestOpenTicket;
@@ -934,34 +940,35 @@ async function loadHome() {
 
     el.innerHTML = `
       <div class="hero">
-        <h1>${greet}, Adam 👋</h1>
+        <h1>${greet}, Adam</h1>
         <p>${allClear ? "All clear. Charge Nomad is humming along nicely." : "A few things could use your eyes today."}</p>
       </div>
 
+      <h2 class="section" style="margin-top:0">Needs your attention</h2>
       <div class="stats">
-        <div class="stat green click" onclick="showTab('tickets')"><div class="ic">🎫</div><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
-        <div class="stat blue click" onclick="showTab('moderation')"><div class="ic">⚡</div><div class="n">${modCount}</div><div class="l">To moderate</div></div>
-        <div class="stat amber click" onclick="showTab('moderation')"><div class="ic">🚩</div><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
-        <div class="stat pink click" onclick="showTab('signups')"><div class="ic">🌱</div><div class="n">${last7}</div><div class="l">Signups this week</div></div>
-        ${oldest ? `<div class="stat ${oldestDays >= 3 ? "amber" : "green"} click" onclick="showTab('tickets')" title="${esc(oldest.subject)}"><div class="ic">⏳</div><div class="n">${oldestDays}d</div><div class="l">Oldest open ticket</div></div>` : ""}
+        <div class="stat green click" onclick="showTab('tickets')"><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
+        <div class="stat blue click" onclick="showTab('moderation')"><div class="n">${modCount}</div><div class="l">To moderate</div></div>
+        <div class="stat amber click" onclick="showTab('moderation')"><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
+        ${oldest ? `<div class="stat ${oldestDays >= 3 ? "amber" : "green"} click" onclick="showTab('tickets')" title="${esc(oldest.subject)}"><div class="n">${oldestDays}d</div><div class="l">Oldest open ticket</div></div>` : ""}
       </div>
-
-      <div class="pillrow">
-        <div class="pillstat" onclick="showTab('history')">⚡ <b>${actionsToday}</b> today</div>
-        <div class="pillstat" onclick="showTab('history')">✅ <b>${approvedWeek}</b> approved this week</div>
-        <div class="pillstat" onclick="showTab('history')">🚫 <b>${rejectedWeek}</b> rejected/dismissed this week</div>
-        <div class="pillstat" onclick="showTab('history')">📜 <b>${hist.length}</b> logged recently</div>
-      </div>
-
-      ${attention.length ? `
-        <h2 class="section">Up next</h2>
-        ${attention.map(a => `
+      ${attention.length ? attention.map(a => `
           <div class="card rowlink" onclick="showTab('${a.tab}')" style="cursor:pointer;padding:14px 18px">
-            <div class="summary"><span style="font-size:16px">${a.icon}</span>
+            <div class="summary">
               <div class="grow"><h3 style="font-size:14px">${esc(a.text)}</h3><span class="sub">${fmtDate(a.when)}</span></div>
               <span class="chev">▶</span>
             </div>
-          </div>`).join("")}` : ""}
+          </div>`).join("") : `<div class="empty" style="padding:24px 0">Nothing waiting on you right now.</div>`}
+
+      <h2 class="section">This week</h2>
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat pink click" onclick="showTab('signups')"><div class="n">${last7}</div><div class="l">New signups</div></div>
+      </div>
+      <div class="pillrow">
+        <div class="pillstat" onclick="showTab('history')"><b>${actionsToday}</b> today</div>
+        <div class="pillstat" onclick="showTab('history')"><b>${approvedWeek}</b> approved this week</div>
+        <div class="pillstat" onclick="showTab('history')"><b>${rejectedWeek}</b> rejected/dismissed this week</div>
+        <div class="pillstat" onclick="showTab('history')"><b>${hist.length}</b> logged recently</div>
+      </div>
 
       <div id="checklist"></div>
     `;
@@ -1596,6 +1603,14 @@ async function sendBroadcastReal() {
 
 // ── Tickets (split view) ──────────────────────────────────────────────
 let ticketFilter = "";
+let ticketStatusFilter = "all";
+function setTicketStatusFilter(status) {
+  ticketStatusFilter = status;
+  for (const b of document.querySelectorAll("#ticketStatusFilter button")) {
+    b.classList.toggle("active", b.dataset.status === status);
+  }
+  renderTicketList();
+}
 
 async function loadTickets() {
   const list = document.getElementById("ticketList");
@@ -1625,33 +1640,32 @@ async function loadTickets() {
         <div class="stat amber"><div class="n">${closed.length}</div><div class="l">Resolved</div></div>
       </div>
       <div class="ticketMetaLine">
-        🍎 ${iosOpen} iOS · 🤖 ${androidOpen} Android${unknownOpen ? ` · ❔ ${unknownOpen} unknown` : ""} open
+        ${iosOpen} iOS · ${androidOpen} Android${unknownOpen ? ` · ${unknownOpen} unknown` : ""} open
         <span class="dot">·</span>
-        <a onclick="downloadTicketsCSV()">⬇ Export CSV</a>
+        <a onclick="downloadTicketsCSV()">Export CSV</a>
       </div>`;
     renderTicketList();
   } catch (e) { list.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
 }
 
 function platformIcon(p) {
-  if (p === "iOS") return "🍎";
-  if (p === "Android") return "🤖";
+  if (p === "iOS" || p === "Android") return p;
   return "";
 }
 
 function ticketRow(t) {
-  const icon = t.category === "bug" ? "🐛" : t.category === "feature" ? "💡" : "💬";
+  const category = t.category === "bug" ? "Bug" : t.category === "feature" ? "Feature" : "Other";
   const plat = platformIcon(t.platform);
   const sub = [t.name, fmtDate(t.created_at)].filter(Boolean).map(esc).join(" · ");
   return `
   <div class="card rowlink ${String(t.id) === String(convoId) ? "sel" : ""}" data-tid="${t.id}" style="padding:12px 14px;cursor:pointer" onclick="openConvo('${t.id}')">
     <div class="summary">
-      <span style="font-size:16px">${icon}</span>
+      <span class="pill closed" title="${esc(category)}" style="flex-shrink:0">${esc(category)}</span>
       <div class="grow">
-        <h3 style="font-size:13px">${esc(t.subject)}${plat ? ` <span title="${esc(t.platform)}" style="font-size:12px">${plat}</span>` : ""}</h3>
+        <h3 style="font-size:13px">${esc(t.subject)}${plat ? ` <span class="sub" style="font-size:11px">· ${esc(plat)}</span>` : ""}</h3>
         <span class="sub">${sub}</span>
       </div>
-      ${t.admin_note ? '<span title="Has internal note">📌</span>' : ""}
+      ${t.admin_note ? '<span class="sub" title="Has an internal note" style="font-size:11px">Note</span>' : ""}
       <span class="pill ${esc(t.status)}">${esc(t.status.replace("_", " "))}</span>
     </div>
   </div>`;
@@ -1665,11 +1679,15 @@ function renderTicketList() {
   const inProgress = LAST_TICKETS.filter(t => t.status === "in_progress" && match(t));
   const closed = LAST_TICKETS.filter(t => t.status === "closed" && match(t));
   if (!LAST_TICKETS.length) { list.innerHTML = '<div class="empty">No tickets yet</div>'; return; }
+  const showOpen = ticketStatusFilter === "all" || ticketStatusFilter === "open";
+  const showProgress = ticketStatusFilter === "all" || ticketStatusFilter === "in_progress";
+  const showClosed = ticketStatusFilter === "all" || ticketStatusFilter === "closed";
+  const anyShown = (showOpen && needsReply.length) || (showProgress && inProgress.length) || (showClosed && closed.length);
   list.innerHTML =
-    (needsReply.length ? '<h2 class="section" style="margin-top:0">Needs a reply</h2>' + needsReply.map(ticketRow).join("") : "") +
-    (inProgress.length ? '<h2 class="section">In progress</h2>' + inProgress.map(ticketRow).join("") : "") +
-    (closed.length ? '<h2 class="section">Resolved</h2>' + closed.map(ticketRow).join("") : "") +
-    (!needsReply.length && !inProgress.length && !closed.length ? '<div class="empty">No tickets match your search</div>' : "");
+    (showOpen && needsReply.length ? '<h2 class="section" style="margin-top:0">Needs a reply</h2>' + needsReply.map(ticketRow).join("") : "") +
+    (showProgress && inProgress.length ? '<h2 class="section">In progress</h2>' + inProgress.map(ticketRow).join("") : "") +
+    (showClosed && closed.length ? '<h2 class="section">Resolved</h2>' + closed.map(ticketRow).join("") : "") +
+    (!anyShown ? '<div class="empty">No tickets match this filter</div>' : "");
 }
 function downloadTicketsCSV() {
   if (!LAST_TICKETS.length) { toast("No tickets yet"); return; }
@@ -1720,9 +1738,9 @@ function renderConvoHeader() {
   const actions = document.getElementById("convoActions");
   if (!t) { actions.innerHTML = ""; return; }
   actions.innerHTML = `
-    <span class="sub" style="color:var(--text3);font-size:12px">${t.category === "bug" ? "🐛 Bug" : t.category === "feature" ? "💡 Feature idea" : "💬 Other"} · #${t.id}${t.platform ? " · " + platformIcon(t.platform) + " " + esc(t.platform) : ""}${t.email ? " · " + esc(t.email) : ""}${t.app_version ? " · v" + esc(t.app_version) : ""}</span>
+    <span class="sub" style="color:var(--text3);font-size:12px">${t.category === "bug" ? "Bug" : t.category === "feature" ? "Feature idea" : "Other"} · #${t.id}${t.platform ? " · " + esc(t.platform) : ""}${t.email ? " · " + esc(t.email) : ""}${t.app_version ? " · v" + esc(t.app_version) : ""}</span>
     <span style="flex:1"></span>
-    <input type="text" id="convoNote" placeholder="📌 Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="max-width:280px" onchange="saveConvoNote()">
+    <input type="text" id="convoNote" placeholder="Internal note (only you see this)…" value="${esc(t.admin_note ?? "")}" style="max-width:280px" onchange="saveConvoNote()">
     ${t.status === "open" ? `<button class="neutral" onclick="setConvoStatus('in_progress')">Mark in progress</button>` : ""}
     ${t.status !== "closed"
       ? `<button class="approve" onclick="resolveConvo()">Resolve${t.email ? " &amp; email" : ""}</button>`
@@ -1784,7 +1802,7 @@ async function deleteConvoTicket() {
     document.getElementById("convoTitle").textContent = "Pick a ticket";
     document.getElementById("convoPill").style.display = "none";
     document.getElementById("convoActions").innerHTML = "";
-    document.getElementById("convoMsgs").innerHTML = '<div class="empty">Select a ticket on the left to read and reply 👈</div>';
+    document.getElementById("convoMsgs").innerHTML = '<div class="empty">Select a ticket on the left to read and reply</div>';
     closeConvo();
     loadTickets();
   } catch (e) { toast("Failed: " + e.message); }
@@ -1807,7 +1825,7 @@ async function loadConvo() {
       <div class="bubble ${esc(m.sender)}">
         <div class="who">${m.sender === "admin" ? "You" : esc(t?.name || "User")} · ${fmtDate(m.created_at)}</div>${esc(m.text)}
       </div>`).join("");
-    if (!messages.length) html += '<div class="empty" style="padding:16px 0">No replies yet. Say hello below 👇</div>';
+    if (!messages.length) html += '<div class="empty" style="padding:16px 0">No replies yet. Say hello below.</div>';
     el.innerHTML = html;
     el.scrollTop = el.scrollHeight;
   } catch (e) { el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`; }
@@ -1831,7 +1849,7 @@ async function sendConvo() {
 // Fill the conversation window's template picker once at boot.
 (function () {
   const sel = document.getElementById("convoTpl");
-  sel.innerHTML = '<option value="">📋 Templates…</option>' +
+  sel.innerHTML = '<option value="">Templates…</option>' +
     TEMPLATES.map((tp, i) => `<option value="${i}">${esc(tp.label)}</option>`).join("");
 })();
 
@@ -1914,8 +1932,8 @@ async function loadSignups() {
       </div>
       ${signupChartHTML(signups)}
       <div class="actions" style="margin-bottom:14px">
-        <button class="neutral" onclick="copySignupEmails()">📧 Copy newsletter emails</button>
-        <button class="neutral" onclick="downloadSignupsCSV()">⬇️ Download CSV</button>
+        <button class="neutral" onclick="copySignupEmails()">Copy newsletter emails</button>
+        <button class="neutral" onclick="downloadSignupsCSV()">Download CSV</button>
       </div>
       <div class="tablewrap"><table>
         <tr><th>When</th><th>Name</th><th>Email</th><th>Vehicle</th><th>News</th></tr>
@@ -2061,7 +2079,7 @@ async function deleteContent(type, id) {
 }
 
 // ── Auto-refresh + new-ticket notifications ──────────────────────────
-// Polls tickets every 60s. When the 🔔 toggle is on and a ticket with a
+// Polls tickets every 60s. When the Alerts toggle is on and a ticket with a
 // higher id than anything we've seen arrives, fires a browser notification.
 let notifyOn = localStorage.getItem("cn_notify") === "1";
 let maxSeenTicketId = null;
@@ -2069,7 +2087,7 @@ let maxSeenTicketId = null;
 function renderNotifyBtn() {
   const b = document.getElementById("notifyBtn");
   b.classList.toggle("on", notifyOn);
-  b.textContent = notifyOn ? "🔔 On" : "🔔";
+  b.textContent = notifyOn ? "Alerts: On" : "Alerts: Off";
 }
 async function toggleNotify() {
   if (!notifyOn) {
