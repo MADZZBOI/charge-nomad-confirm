@@ -55,7 +55,7 @@
   /* ── Nav ────────────────────────────────────────────── */
   nav {
     display: flex; gap: 8px; padding: 16px clamp(16px, 4vw, 28px) 0;
-    max-width: min(1440px, 96vw); margin: 0 auto; flex-wrap: wrap;
+    max-width: min(1180px, 92vw); margin: 0 auto; flex-wrap: wrap;
   }
   nav button {
     background: transparent; color: var(--text3); padding: 9px 18px;
@@ -68,10 +68,10 @@
     padding: 1px 7px; font-size: 11px; font-weight: 700; margin-left: 6px; vertical-align: 1px;
   }
 
-  main { padding: 20px clamp(16px, 4vw, 28px) calc(80px + env(safe-area-inset-bottom)); max-width: min(1440px, 96vw); margin: 0 auto; }
+  main { padding: 20px clamp(16px, 4vw, 28px) calc(80px + env(safe-area-inset-bottom)); max-width: min(1180px, 92vw); margin: 0 auto; }
 
   /* ── Stats ──────────────────────────────────────────── */
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 200px)); justify-content: start; gap: 12px; margin-bottom: 20px; }
   .stat {
     background: linear-gradient(160deg, var(--elevated), var(--card));
     border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px;
