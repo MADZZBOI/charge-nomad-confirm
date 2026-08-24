@@ -377,6 +377,7 @@
   <button data-tab="content" onclick="showTab('content')">Content</button>
   <button data-tab="grants" onclick="showTab('grants')">Grants</button>
   <button data-tab="partners" onclick="showTab('partners')">Partners</button>
+  <button data-tab="broadcast" onclick="showTab('broadcast')">Broadcast</button>
   <button data-tab="history" onclick="showTab('history')">History</button>
   <button data-tab="recovery" onclick="showTab('recovery')">Recovery</button>
 </nav>
@@ -442,6 +443,24 @@
     </div>
     <div id="partnerForm" style="display:none"></div>
     <div id="partnersResults"><div class="empty">Loading…</div></div>
+  </div>
+  <div id="tab-broadcast" style="display:none">
+    <p style="color:#9BA69F;font-size:13px;margin:0 0 16px">
+      One personal email, sent one-to-one to every account that signed up and said yes to updates — nobody ever sees another recipient's address. Write <code>{name}</code> anywhere you want their first name (falls back to "there" if unknown).
+    </p>
+    <div class="editform" style="max-width:640px">
+      <div><label>Subject</label><input type="text" id="bcSubject" placeholder="e.g. Thank you for being one of our first 1,000 🎉"></div>
+      <div>
+        <label>Body (blank line = new paragraph)</label>
+        <textarea id="bcBody" rows="10" placeholder="Hi {name},&#10;&#10;I honestly can't believe it's only been a month since launch..."></textarea>
+      </div>
+    </div>
+    <div class="quick" style="margin-top:14px">
+      <button class="neutral" onclick="loadBroadcastPreview()">↻ Refresh recipient count</button>
+      <button class="neutral" onclick="sendBroadcastTest()">Send test to me</button>
+      <button class="approve" onclick="sendBroadcastReal()">Send to everyone</button>
+    </div>
+    <div id="bcPreview" style="margin-top:16px"><div class="empty">Loading…</div></div>
   </div>
   <div id="tab-history" style="display:none">
     <div class="searchrow">
@@ -532,12 +551,13 @@ document.getElementById("secretInput").addEventListener("keydown", e => { if (e.
 // ── Tabs ──────────────────────────────────────────────────────────────
 function showTab(name) {
   for (const b of document.querySelectorAll("nav button")) b.classList.toggle("active", b.dataset.tab === name);
-  for (const id of ["home", "moderation", "tickets", "signups", "content", "grants", "partners", "history", "recovery"]) {
+  for (const id of ["home", "moderation", "tickets", "signups", "content", "grants", "partners", "broadcast", "history", "recovery"]) {
     document.getElementById("tab-" + id).style.display = id === name ? "" : "none";
   }
   if (name === "history") loadHistory();
   if (name === "grants") loadGrants();
   if (name === "partners") loadPartners();
+  if (name === "broadcast") loadBroadcastPreview();
 }
 
 // ── Charge Plus manual grants ────────────────────────────────────────
@@ -1515,6 +1535,54 @@ async function promptMergeDuplicate(duplicateId, duplicateSource) {
     await api("mergeDuplicateCharger", { duplicateId, duplicateSource, primaryId, primarySource: primarySource.trim() });
     toast("Marked as duplicate ✓");
     loadModeration();
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+// ── Broadcast email ────────────────────────────────────────────────────
+async function loadBroadcastPreview() {
+  const el = document.getElementById("bcPreview");
+  el.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const { count, sample } = await api("broadcastPreview");
+    const sampleLine = sample?.length
+      ? "e.g. " + sample.map(s => esc((s.name || "").trim().split(" ")[0] || "someone")).join(", ") + (count > sample.length ? ", …" : "")
+      : "";
+    el.innerHTML = `
+      <div class="stats" style="grid-template-columns:auto">
+        <div class="stat green"><div class="n">${count}</div><div class="l">Will receive this</div></div>
+      </div>
+      ${sampleLine ? `<p style="color:var(--text3);font-size:12px;margin-top:-8px">${sampleLine}</p>` : ""}`;
+  } catch (e) {
+    el.innerHTML = `<div class="empty err">Failed: ${esc(e.message)}</div>`;
+  }
+}
+
+async function sendBroadcastTest() {
+  const subject = document.getElementById("bcSubject").value.trim();
+  const bodyText = document.getElementById("bcBody").value.trim();
+  if (!subject || !bodyText) { toast("Write a subject and body first"); return; }
+  const testEmail = prompt("Send a test copy to which email address?", "");
+  if (!testEmail) return;
+  try {
+    await api("broadcastSend", { subject, body: bodyText, testEmail });
+    toast("Test sent to " + testEmail + " ✓");
+  } catch (e) { toast("Failed: " + e.message); }
+}
+
+async function sendBroadcastReal() {
+  const subject = document.getElementById("bcSubject").value.trim();
+  const bodyText = document.getElementById("bcBody").value.trim();
+  if (!subject || !bodyText) { toast("Write a subject and body first"); return; }
+  let count;
+  try {
+    ({ count } = await api("broadcastPreview"));
+  } catch (e) { toast("Couldn't check recipient count: " + e.message); return; }
+  if (!count) { toast("Nobody is opted in to receive this right now"); return; }
+  if (!confirm(`Send "${subject}" to ${count} ${count === 1 ? "person" : "people"}? This can't be undone — send a test to yourself first if you haven't.`)) return;
+  if (!confirm(`Really send now? This will immediately email all ${count} recipients.`)) return;
+  try {
+    const { sent, failed, total } = await api("broadcastSend", { subject, body: bodyText });
+    toast(failed ? `Sent ${sent}/${total}, ${failed} failed` : `Sent to all ${sent} ✓`);
   } catch (e) { toast("Failed: " + e.message); }
 }
 
