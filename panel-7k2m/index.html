@@ -129,6 +129,20 @@
   }
   .hero p { color: var(--text3); font-size: 14px; margin-top: 4px; }
 
+  /* Home dashboard: one screen, nothing scrolls except the two lower panes */
+  #tab-home { display: flex; flex-direction: column; height: calc(100vh - 140px); overflow: hidden; }
+  .dash-row { flex: 1; min-height: 0; display: flex; gap: 16px; margin-top: 14px; }
+  .dash-col { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .dash-col.wide { flex: 1.3; }
+  .dash-col .section { margin: 0 0 10px; }
+  .dash-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 2px; }
+  @media (max-width: 900px) {
+    #tab-home { display: block; height: auto; overflow: visible; }
+    .dash-row { display: block; }
+    .dash-col { display: block; margin-bottom: 20px; }
+    .dash-scroll { overflow-y: visible; }
+  }
+
   /* Split-view ticket workspace */
   #tab-tickets { display: flex; flex-direction: column; height: calc(100vh - 140px); overflow: hidden; }
   #ticketStats { flex-shrink: 0; }
@@ -939,38 +953,40 @@ async function loadHome() {
     const oldestDays = oldest ? Math.floor((Date.now() - new Date(oldest.created_at)) / 864e5) : 0;
 
     el.innerHTML = `
-      <div class="hero">
-        <h1>${greet}, Adam</h1>
+      <div class="hero" style="margin:0 0 10px">
+        <h1 style="font-size:22px">${greet}, Adam</h1>
         <p>${allClear ? "All clear. Charge Nomad is humming along nicely." : "A few things could use your eyes today."}</p>
       </div>
 
-      <h2 class="section" style="margin-top:0">Needs your attention</h2>
-      <div class="stats">
+      <div class="stats" style="flex-shrink:0">
         <div class="stat green click" onclick="showTab('tickets')"><div class="n">${o.openTickets.count}</div><div class="l">Open tickets</div></div>
         <div class="stat blue click" onclick="showTab('moderation')"><div class="n">${modCount}</div><div class="l">To moderate</div></div>
         <div class="stat amber click" onclick="showTab('moderation')"><div class="n">${o.reports.count}</div><div class="l">Reports</div></div>
         ${oldest ? `<div class="stat ${oldestDays >= 3 ? "amber" : "green"} click" onclick="showTab('tickets')" title="${esc(oldest.subject)}"><div class="n">${oldestDays}d</div><div class="l">Oldest open ticket</div></div>` : ""}
-      </div>
-      ${attention.length ? attention.map(a => `
-          <div class="card rowlink" onclick="showTab('${a.tab}')" style="cursor:pointer;padding:14px 18px">
-            <div class="summary">
-              <div class="grow"><h3 style="font-size:14px">${esc(a.text)}</h3><span class="sub">${fmtDate(a.when)}</span></div>
-              <span class="chev">▶</span>
-            </div>
-          </div>`).join("") : `<div class="empty" style="padding:24px 0">Nothing waiting on you right now.</div>`}
-
-      <h2 class="section">This week</h2>
-      <div class="stats" style="margin-bottom:12px">
-        <div class="stat pink click" onclick="showTab('signups')"><div class="n">${last7}</div><div class="l">New signups</div></div>
-      </div>
-      <div class="pillrow">
-        <div class="pillstat" onclick="showTab('history')"><b>${actionsToday}</b> today</div>
-        <div class="pillstat" onclick="showTab('history')"><b>${approvedWeek}</b> approved this week</div>
-        <div class="pillstat" onclick="showTab('history')"><b>${rejectedWeek}</b> rejected/dismissed this week</div>
-        <div class="pillstat" onclick="showTab('history')"><b>${hist.length}</b> logged recently</div>
+        <div class="stat pink click" onclick="showTab('signups')"><div class="n">${last7}</div><div class="l">New signups this week</div></div>
+        <div class="stat click" onclick="showTab('history')"><div class="n">${actionsToday}</div><div class="l">Actions today</div></div>
+        <div class="stat green click" onclick="showTab('history')"><div class="n">${approvedWeek}</div><div class="l">Approved this week</div></div>
+        <div class="stat amber click" onclick="showTab('history')"><div class="n">${rejectedWeek}</div><div class="l">Rejected this week</div></div>
+        <div class="stat click" onclick="showTab('history')"><div class="n">${hist.length}</div><div class="l">Logged recently</div></div>
       </div>
 
-      <div id="checklist"></div>
+      <div class="dash-row">
+        <div class="dash-col wide">
+          <h2 class="section">Needs your attention</h2>
+          <div class="dash-scroll">
+            ${attention.length ? attention.map(a => `
+              <div class="card rowlink" onclick="showTab('${a.tab}')" style="cursor:pointer;padding:14px 18px">
+                <div class="summary">
+                  <div class="grow"><h3 style="font-size:14px">${esc(a.text)}</h3><span class="sub">${fmtDate(a.when)}</span></div>
+                  <span class="chev">▶</span>
+                </div>
+              </div>`).join("") : `<div class="empty" style="padding:24px 0">Nothing waiting on you right now.</div>`}
+          </div>
+        </div>
+        <div class="dash-col">
+          <div class="dash-scroll" id="checklist"></div>
+        </div>
+      </div>
     `;
     loadHomeChecklist();
     // Once-per-day confetti the first time a load lands on genuine inbox
